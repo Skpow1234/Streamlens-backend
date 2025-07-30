@@ -7,27 +7,34 @@ SteamLens is a backend service for tracking and analyzing YouTube video watch ev
 ## Project Structure
 
 ```bash
+Streamlens-back/
 ├── boot/
-│   └── docker-run.sh         # Entrypoint script for Docker
-├── compose.yaml              # Docker Compose configuration
-├── Dockerfile.web            # Dockerfile for the web service
-├── requirements.txt          # Python dependencies
+│   └── docker-run.sh              # Entrypoint script for Docker
+├── compose.yaml                   # Docker Compose configuration
+├── Dockerfile.web                 # Dockerfile for the web service
+├── requirements.txt               # Python dependencies
 ├── src/
-│   ├── main.py               # FastAPI application entrypoint
+│   ├── main.py                    # FastAPI application entrypoint
 │   └── api/
 │       ├── __init__.py
-│       ├── utils.py          # Utility functions
+│       ├── utils.py               # Utility functions
 │       ├── db/
 │       │   ├── __init__.py
-│       │   └── session.py    # DB session and initialization
+│       │   ├── models.py          # User model (with roles)
+│       │   └── session.py         # DB session and initialization
+│       ├── auth/
+│       │   ├── __init__.py
+│       │   ├── models.py          # Pydantic models for auth
+│       │   ├── routing.py         # Auth endpoints (signup, login, me)
+│       │   └── utils.py           # Password hashing, JWT, user extraction
 │       ├── video_events/
 │       │   ├── __init__.py
-│       │   ├── models.py     # Models for video events
-│       │   └── routing.py    # API endpoints for video events
+│       │   ├── models.py          # Models for video events
+│       │   └── routing.py         # API endpoints for video events
 │       └── watch_sessions/
 │           ├── __init__.py
-│           ├── models.py     # Models for watch sessions
-│           └── routing.py    # API endpoints for watch sessions
+│           ├── models.py          # Models for watch sessions
+│           └── routing.py         # API endpoints for watch sessions
 ```
 
 ---

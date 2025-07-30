@@ -9,3 +9,4 @@ requests
 python-decouple
 psycopg[binary] # psycopg v3
 # psycopg2-binary
+regex

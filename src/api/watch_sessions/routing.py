@@ -2,6 +2,7 @@ import logging
 from fastapi import APIRouter, Request, Depends, HTTPException
 from typing import List
 from sqlmodel import Session, select
+from pydantic import ValidationError
 
 from api.db.session import get_session
 from .models import WatchSession, WatchSessionCreate
@@ -21,8 +22,15 @@ def create_watch_session(
     """Create a new watch session."""
     headers = request.headers
     referer = headers.get("referer")
-    data = payload.model_dump()
-    obj = WatchSession(**data)
+    if not referer or len(referer) > 255:
+        logger.warning("Missing or invalid referer header in create_watch_session")
+        raise HTTPException(status_code=400, detail="Missing or invalid referer header.")
+    try:
+        data = payload.model_dump()
+        obj = WatchSession(**data)
+    except ValidationError as e:
+        logger.warning(f"Validation error in create_watch_session: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid input: {e}")
     obj.referer = referer
     db_session.add(obj)
     db_session.commit()

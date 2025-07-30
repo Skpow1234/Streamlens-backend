@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import List
 from datetime import datetime, timedelta, timezone
 
@@ -6,6 +7,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 
 from sqlalchemy import func
 from sqlmodel import Session, select
+from pydantic import ValidationError
 
 from timescaledb.hyperfunctions import time_bucket
 from timescaledb.utils import get_utc_now
@@ -35,16 +37,26 @@ def create_video_event(
     ):
     """Create a new YouTube watch event."""
     headers = request.headers
-    watch_session_id = headers.get('x-session-id')
     referer = headers.get("referer")
-    data = payload.model_dump()
-    obj = YouTubeWatchEvent(**data)
+    session_id = headers.get('x-session-id')
+    if not referer or len(referer) > 255:
+        logger.warning("Missing or invalid referer header in create_video_event")
+        raise HTTPException(status_code=400, detail="Missing or invalid referer header.")
+    if session_id is not None and (not re.match(r'^[\w\-]+$', session_id) or len(session_id) > 64):
+        logger.warning("Missing or invalid x-session-id header in create_video_event")
+        raise HTTPException(status_code=400, detail="Missing or invalid x-session-id header.")
+    try:
+        data = payload.model_dump()
+        obj = YouTubeWatchEvent(**data)
+    except ValidationError as e:
+        logger.warning(f"Validation error in create_video_event: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid input: {e}")
     obj.referer = referer
-    if watch_session_id:
-        watch_session_query = select(WatchSession).where(WatchSession.watch_session_id==watch_session_id)
+    if session_id:
+        watch_session_query = select(WatchSession).where(WatchSession.watch_session_id==session_id)
         watch_session_obj = db_session.exec(watch_session_query).first()
         if watch_session_obj:
-            obj.watch_session_id = watch_session_id
+            obj.watch_session_id = session_id
             watch_session_obj.last_active = get_utc_now()
             db_session.add(watch_session_obj)
     db_session.add(obj)

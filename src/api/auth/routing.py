@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from api.db.session import get_session
 from .models import UserCreate, UserLogin
 from api.db.models import User
-from .utils import hash_password, verify_password, create_access_token
+from .utils import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -27,3 +27,7 @@ def login(user: UserLogin, db: Session = Depends(get_session)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": db_user.id})
     return {"access_token": token, "token_type": "bearer"}
+
+@router.get("/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return {"id": current_user.id, "username": current_user.username, "email": current_user.email}

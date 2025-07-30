@@ -12,3 +12,6 @@ psycopg[binary] # psycopg v3
 regex
 flake8
 black
+passlib[bcrypt]
+python-jose
+bcrypt

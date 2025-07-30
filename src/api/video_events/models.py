@@ -1,18 +1,19 @@
 from datetime import datetime
 from typing import Optional
+from pydantic import constr, conint, confloat
 
 from timescaledb import TimescaleModel
 from pydantic import BaseModel, Field as PydanticField
 from sqlmodel import SQLModel, Field
 
-
 class YouTubeWatchEvent(TimescaleModel, table=True):
-    # id: int = Field(primary_key=True)
-    is_ready: bool 
-    video_id: str = Field(index=True)
-    video_title: str
-    current_time: float
-    video_state_label: str
+    """A time-series event representing a YouTube player's state change."""
+    id: int = Field(primary_key=True)
+    is_ready: bool
+    video_id: constr(min_length=1) = Field(index=True)
+    video_title: constr(min_length=1)
+    current_time: confloat(ge=0)
+    video_state_label: constr(min_length=1)
     video_state_value: int
     referer: Optional[str] = Field(default="", index=True)
     watch_session_id: Optional[str] = Field(index=True)
@@ -26,23 +27,20 @@ class YouTubeWatchEvent(TimescaleModel, table=True):
     __migrate_data__ = True
     __if_not_exists__ = True
 
-
 class YouTubePlayerState(SQLModel, table=False):
-    is_ready: bool 
-    video_id: str = Field(index=True)
-    video_title: str
-    current_time: float
-    video_state_label: str
+    """Schema for YouTube player state input. Used for creating/updating events."""
+    is_ready: bool
+    video_id: constr(min_length=1) = Field(index=True)
+    video_title: constr(min_length=1)
+    current_time: confloat(ge=0)
+    video_state_label: constr(min_length=1)
     video_state_value: int
-
 
 class YouTubeWatchEventResponseModel(SQLModel, table=False):
     id: int = Field(primary_key=True)
     video_id: str = Field(index=True)
     current_time: float
     time: datetime
-
-
 
 class VideoStat(BaseModel):
     time: datetime

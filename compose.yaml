@@ -22,8 +22,8 @@ services:
     image: timescale/timescaledb:latest-pg17
     # image: postgres:17.4
     environment:
-      - POSTGRES_USER=time-user
-      - POSTGRES_PASSWORD=time-pw
+      - POSTGRES_USER=steamlens
+      - POSTGRES_PASSWORD=steamlens
       - POSTGRES_DB=timescaledb
     ports:
       - "5432:5432"

@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from datetime import datetime, timedelta, timezone
 
@@ -20,22 +21,23 @@ from .models import (
     VideoStat
 )
 
+# Set up logging
+logger = logging.getLogger("video_events")
+logging.basicConfig(level=logging.INFO)
+
 router = APIRouter()
 
-@router.post("/", response_model=YouTubeWatchEventResponseModel) # /api/video-events/
+@router.post("/", response_model=YouTubeWatchEventResponseModel)
 def create_video_event(
         request: Request, 
         payload: YouTubePlayerState,
         db_session: Session = Depends(get_session)  
     ):
+    """Create a new YouTube watch event."""
     headers = request.headers
     watch_session_id = headers.get('x-session-id')
-    print('session id', watch_session_id)
-    print()
     referer = headers.get("referer")
-    # print(db_session)
     data = payload.model_dump()
-    # data["referer"] = referer
     obj = YouTubeWatchEvent(**data)
     obj.referer = referer
     if watch_session_id:
@@ -48,9 +50,56 @@ def create_video_event(
     db_session.add(obj)
     db_session.commit()
     db_session.refresh(obj)
-    print(obj)
-    # print(data, referer)
+    logger.info(f"Created YouTubeWatchEvent: {obj.id}")
     return obj
+
+# List all events
+@router.get("/", response_model=List[YouTubeWatchEventResponseModel])
+def list_video_events(db_session: Session = Depends(get_session)):
+    """List all YouTube watch events."""
+    events = db_session.exec(select(YouTubeWatchEvent)).all()
+    logger.info(f"Listed {len(events)} video events.")
+    return events
+
+# Get a specific event
+@router.get("/{event_id}", response_model=YouTubeWatchEventResponseModel)
+def get_video_event(event_id: int, db_session: Session = Depends(get_session)):
+    """Retrieve a specific YouTube watch event by its ID."""
+    event = db_session.get(YouTubeWatchEvent, event_id)
+    if not event:
+        logger.warning(f"YouTubeWatchEvent not found: {event_id}")
+        raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
+    return event
+
+# Update a specific event
+@router.put("/{event_id}", response_model=YouTubeWatchEventResponseModel)
+def update_video_event(event_id: int, payload: YouTubePlayerState, db_session: Session = Depends(get_session)):
+    """Update an existing YouTube watch event."""
+    event = db_session.get(YouTubeWatchEvent, event_id)
+    if not event:
+        logger.warning(f"YouTubeWatchEvent not found for update: {event_id}")
+        raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
+    update_data = payload.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(event, key, value)
+    db_session.add(event)
+    db_session.commit()
+    db_session.refresh(event)
+    logger.info(f"Updated YouTubeWatchEvent: {event_id}")
+    return event
+
+# Delete a specific event
+@router.delete("/{event_id}")
+def delete_video_event(event_id: int, db_session: Session = Depends(get_session)):
+    """Delete a YouTube watch event by its ID."""
+    event = db_session.get(YouTubeWatchEvent, event_id)
+    if not event:
+        logger.warning(f"YouTubeWatchEvent not found for deletion: {event_id}")
+        raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
+    db_session.delete(event)
+    db_session.commit()
+    logger.info(f"Deleted YouTubeWatchEvent: {event_id}")
+    return {"ok": True, "deleted_id": event_id}
 
 
 

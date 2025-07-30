@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional
+from pydantic import constr
 
 from timescaledb import TimescaleModel
 from timescaledb.utils import get_utc_now
@@ -9,9 +10,9 @@ from sqlmodel import SQLModel, Field
 def generate_session_id():
     return str(uuid.uuid4())
 
-
 class WatchSession(TimescaleModel, table=True):
-    # id: int = Field(primary_key=True)
+    """A session representing a user's watch activity."""
+    id: int = Field(primary_key=True)
     watch_session_id: str = Field(default_factory=generate_session_id, index=True)
     path: Optional[str]  = Field(default="", index=True)
     referer: Optional[str] = Field(default="", index=True)
@@ -22,8 +23,7 @@ class WatchSession(TimescaleModel, table=True):
     __chunk_time_interval__ = "INTERVAL 30 days"
     __drop_after__ = "INTERVAL 3 years"
 
-
-
 class WatchSessionCreate(SQLModel, table=False):
+    """Schema for creating a new watch session. Requires a non-empty video_id."""
     path: Optional[str] = Field(default="")
-    video_id: Optional[str] = Field(default="", index=True)
+    video_id: constr(min_length=1) = Field(..., description="YouTube video ID must not be empty.")

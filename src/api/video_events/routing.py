@@ -35,7 +35,12 @@ def create_video_event(
         payload: YouTubePlayerState,
         db_session: Session = Depends(get_session)  
     ):
-    """Create a new YouTube watch event."""
+    """
+    Create a new YouTube watch event.
+    - Requires headers: referer (str, required), x-session-id (str, optional)
+    - Request body: YouTubePlayerState
+    - Returns: The created YouTubeWatchEvent
+    """
     headers = request.headers
     referer = headers.get("referer")
     session_id = headers.get('x-session-id')
@@ -68,7 +73,10 @@ def create_video_event(
 # List all events
 @router.get("/", response_model=List[YouTubeWatchEventResponseModel])
 def list_video_events(db_session: Session = Depends(get_session)):
-    """List all YouTube watch events."""
+    """
+    List all YouTube watch events.
+    - Returns: List of YouTubeWatchEventResponseModel
+    """
     events = db_session.exec(select(YouTubeWatchEvent)).all()
     logger.info(f"Listed {len(events)} video events.")
     return events
@@ -76,7 +84,11 @@ def list_video_events(db_session: Session = Depends(get_session)):
 # Get a specific event
 @router.get("/{event_id}", response_model=YouTubeWatchEventResponseModel)
 def get_video_event(event_id: int, db_session: Session = Depends(get_session)):
-    """Retrieve a specific YouTube watch event by its ID."""
+    """
+    Retrieve a specific YouTube watch event by its integer ID.
+    - Path param: event_id (int)
+    - Returns: YouTubeWatchEventResponseModel
+    """
     event = db_session.get(YouTubeWatchEvent, event_id)
     if not event:
         logger.warning(f"YouTubeWatchEvent not found: {event_id}")
@@ -86,7 +98,12 @@ def get_video_event(event_id: int, db_session: Session = Depends(get_session)):
 # Update a specific event
 @router.put("/{event_id}", response_model=YouTubeWatchEventResponseModel)
 def update_video_event(event_id: int, payload: YouTubePlayerState, db_session: Session = Depends(get_session)):
-    """Update an existing YouTube watch event."""
+    """
+    Update an existing YouTube watch event.
+    - Path param: event_id (int)
+    - Request body: YouTubePlayerState
+    - Returns: Updated YouTubeWatchEventResponseModel
+    """
     event = db_session.get(YouTubeWatchEvent, event_id)
     if not event:
         logger.warning(f"YouTubeWatchEvent not found for update: {event_id}")
@@ -103,7 +120,11 @@ def update_video_event(event_id: int, payload: YouTubePlayerState, db_session: S
 # Delete a specific event
 @router.delete("/{event_id}")
 def delete_video_event(event_id: int, db_session: Session = Depends(get_session)):
-    """Delete a YouTube watch event by its ID."""
+    """
+    Delete a YouTube watch event by its integer ID.
+    - Path param: event_id (int)
+    - Returns: JSON with ok status and deleted_id
+    """
     event = db_session.get(YouTubeWatchEvent, event_id)
     if not event:
         logger.warning(f"YouTubeWatchEvent not found for deletion: {event_id}")
@@ -121,6 +142,11 @@ def get_top_video_stats(
         request: Request,
         db_session: Session = Depends(get_session)  
     ):
+    """
+    Get top video statistics, aggregated by time bucket and video.
+    - Query params: bucket (str), hours-ago (int), hours-until (int)
+    - Returns: List of VideoStat
+    """
     params = request.query_params
     bucket_param = params.get("bucket") or "1 day"
     bucket = time_bucket(bucket_param, YouTubeWatchEvent.time)
@@ -176,10 +202,16 @@ def get_top_video_stats(
 
 @router.get("/{video_id}", response_model=List[VideoStat])
 def get_video_stats(
-        video_id:str,
+        video_id: str,
         request: Request,
         db_session: Session = Depends(get_session)  
     ):
+    """
+    Get statistics for a specific video, aggregated by time bucket.
+    - Path param: video_id (str)
+    - Query params: bucket (str), hours-ago (int), hours-until (int)
+    - Returns: List of VideoStat
+    """
     params = request.query_params
     bucket_param = params.get("bucket") or "1 day"
     bucket = time_bucket(bucket_param, YouTubeWatchEvent.time)

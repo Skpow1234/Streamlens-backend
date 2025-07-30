@@ -19,7 +19,12 @@ def create_watch_session(
         payload: WatchSessionCreate,
         db_session: Session = Depends(get_session)  
     ):
-    """Create a new watch session."""
+    """
+    Create a new watch session.
+    - Requires header: referer (str, required)
+    - Request body: WatchSessionCreate
+    - Returns: The created WatchSession
+    """
     headers = request.headers
     referer = headers.get("referer")
     if not referer or len(referer) > 255:
@@ -41,7 +46,10 @@ def create_watch_session(
 # List all sessions
 @router.get("/", response_model=List[WatchSession])
 def list_watch_sessions(db_session: Session = Depends(get_session)):
-    """List all watch sessions."""
+    """
+    List all watch sessions.
+    - Returns: List of WatchSession
+    """
     sessions = db_session.exec(select(WatchSession)).all()
     logger.info(f"Listed {len(sessions)} watch sessions.")
     return sessions
@@ -49,7 +57,11 @@ def list_watch_sessions(db_session: Session = Depends(get_session)):
 # Get a specific session
 @router.get("/{watch_session_id}", response_model=WatchSession)
 def get_watch_session(watch_session_id: str, db_session: Session = Depends(get_session)):
-    """Retrieve a specific watch session by its ID."""
+    """
+    Retrieve a specific watch session by its UUID.
+    - Path param: watch_session_id (str)
+    - Returns: WatchSession
+    """
     session = db_session.exec(select(WatchSession).where(WatchSession.watch_session_id == watch_session_id)).first()
     if not session:
         logger.warning(f"WatchSession not found: {watch_session_id}")
@@ -59,7 +71,12 @@ def get_watch_session(watch_session_id: str, db_session: Session = Depends(get_s
 # Update a session
 @router.put("/{watch_session_id}", response_model=WatchSession)
 def update_watch_session(watch_session_id: str, payload: WatchSessionCreate, db_session: Session = Depends(get_session)):
-    """Update an existing watch session."""
+    """
+    Update an existing watch session.
+    - Path param: watch_session_id (str)
+    - Request body: WatchSessionCreate
+    - Returns: Updated WatchSession
+    """
     session = db_session.exec(select(WatchSession).where(WatchSession.watch_session_id == watch_session_id)).first()
     if not session:
         logger.warning(f"WatchSession not found for update: {watch_session_id}")
@@ -76,7 +93,11 @@ def update_watch_session(watch_session_id: str, payload: WatchSessionCreate, db_
 # Delete a session
 @router.delete("/{watch_session_id}")
 def delete_watch_session(watch_session_id: str, db_session: Session = Depends(get_session)):
-    """Delete a watch session by its ID."""
+    """
+    Delete a watch session by its UUID.
+    - Path param: watch_session_id (str)
+    - Returns: JSON with ok status and deleted_id
+    """
     session = db_session.exec(select(WatchSession).where(WatchSession.watch_session_id == watch_session_id)).first()
     if not session:
         logger.warning(f"WatchSession not found for deletion: {watch_session_id}")

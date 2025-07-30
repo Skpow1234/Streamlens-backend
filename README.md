@@ -92,27 +92,42 @@ Python dependencies (see `requirements.txt`):
 
 ---
 
-## Running Locally (without Docker)
+## Code Linting and Formatting
 
-1. **Install Python dependencies:**
+To ensure code quality and consistency, use the following tools:
 
-   ```sh
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+- **flake8**: Lint your code for style and errors
+- **black**: Auto-format your code to a consistent style
 
-2. **Set environment variables:**
-   - `DATABASE_URL` (e.g., `postgresql+psycopg://user:password@localhost:5432/timescaledb`)
-   - `HOST`, `HOST_SCHEME`, `HOST_PORT` (for CORS)
+### Install (already in requirements.txt)
 
-3. **Start the database** (TimescaleDB/PostgreSQL).
+If you haven't already, install all dependencies:
 
-4. **Run the API:**
+```sh
+pip install -r requirements.txt
+```
 
-   ```sh
-   uvicorn main:app --host 0.0.0.0 --port 8002 --reload
-   ```
+Or, if using Docker, dependencies are installed automatically when you build:
+
+```sh
+docker compose up --build
+```
+
+### Usage
+
+**Lint your code:**
+
+```bash
+flake8 src/
+```
+
+**Auto-format your code:**
+
+```bash
+black src/
+```
+
+You can also add these commands to your CI or pre-commit hooks for ongoing code quality.
 
 ---
 

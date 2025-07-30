@@ -1,7 +1,5 @@
 import os
 from contextlib import asynccontextmanager
-from typing import Union
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -11,7 +9,6 @@ from api.watch_sessions.routing import router as watch_sessions_router
 
 host_origin = ""
 host_origin_portless = ""
-
 
 HOST = os.environ.get("HOST")
 HOST_SCHEME = os.environ.get("HOST_SCHEME")
@@ -28,13 +25,9 @@ origins = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # before app startup up
     init_db()
     yield
-    # clean up
 
-
-# Personalized FastAPI app with custom docs info
 app = FastAPI(
     title="SteamLens API",
     description=(
@@ -55,15 +48,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 app.include_router(video_events_router, prefix='/api/video-events')
 app.include_router(watch_sessions_router, prefix='/api/watch-sessions')
-
 
 @app.get("/")
 def read_root():
     return {"Hello": "World my old friend"}
-
 
 @app.get("/healthChecker")
 def read_api_health():

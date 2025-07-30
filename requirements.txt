@@ -10,3 +10,5 @@ python-decouple
 psycopg[binary] # psycopg v3
 # psycopg2-binary
 regex
+flake8
+black

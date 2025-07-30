@@ -17,6 +17,7 @@ class YouTubeWatchEvent(TimescaleModel, table=True):
     video_state_value: int
     referer: Optional[str] = Field(default="", index=True)
     watch_session_id: Optional[str] = Field(index=True)
+    user_id: int = Field(foreign_key="user.id")
     time: datetime = Field(default_factory=datetime.utcnow, nullable=False, index=True)
 
     # timescaledb config

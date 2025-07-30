@@ -18,6 +18,7 @@ class WatchSession(TimescaleModel, table=True):
     referer: Optional[constr(max_length=255)] = Field(default="", index=True)
     video_id: Optional[str] = Field(default="", index=True)
     last_active: Optional[datetime] = Field(default_factory=get_utc_now)
+    user_id: int = Field(foreign_key="user.id")
 
     # timescaledb config
     __chunk_time_interval__ = "INTERVAL 30 days"

@@ -6,6 +6,8 @@ from pydantic import ValidationError
 
 from api.db.session import get_session
 from .models import WatchSession, WatchSessionCreate
+from api.auth.utils import get_current_user
+from api.db.models import User
 
 # Set up logging
 logger = logging.getLogger("watch_sessions")
@@ -17,7 +19,8 @@ router = APIRouter()
 def create_watch_session(
         request: Request, 
         payload: WatchSessionCreate,
-        db_session: Session = Depends(get_session)  
+        db_session: Session = Depends(get_session),
+        current_user: User = Depends(get_current_user)
     ):
     """
     Create a new watch session.
@@ -37,6 +40,7 @@ def create_watch_session(
         logger.warning(f"Validation error in create_watch_session: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid input: {e}")
     obj.referer = referer
+    obj.user_id = current_user.id
     db_session.add(obj)
     try:
         db_session.commit()
@@ -50,24 +54,24 @@ def create_watch_session(
 
 # List all sessions
 @router.get("/", response_model=List[WatchSession])
-def list_watch_sessions(db_session: Session = Depends(get_session)):
+def list_watch_sessions(db_session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     """
     List all watch sessions.
     - Returns: List of WatchSession
     """
-    sessions = db_session.exec(select(WatchSession)).all()
+    sessions = db_session.exec(select(WatchSession).where(WatchSession.user_id == current_user.id)).all()
     logger.info(f"Listed {len(sessions)} watch sessions.")
     return sessions
 
 # Get a specific session
 @router.get("/{watch_session_id}", response_model=WatchSession)
-def get_watch_session(watch_session_id: str, db_session: Session = Depends(get_session)):
+def get_watch_session(watch_session_id: str, db_session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     """
     Retrieve a specific watch session by its UUID.
     - Path param: watch_session_id (str)
     - Returns: WatchSession
     """
-    session = db_session.exec(select(WatchSession).where(WatchSession.watch_session_id == watch_session_id)).first()
+    session = db_session.exec(select(WatchSession).where(WatchSession.watch_session_id == watch_session_id, WatchSession.user_id == current_user.id)).first()
     if not session:
         logger.warning(f"WatchSession not found: {watch_session_id}")
         raise HTTPException(status_code=404, detail="WatchSession not found")

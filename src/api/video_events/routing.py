@@ -15,6 +15,8 @@ from timescaledb.utils import get_utc_now
 from api.utils import parse_int_or_fallback
 from api.db.session import get_session
 from api.watch_sessions.models import WatchSession
+from api.auth.utils import get_current_user
+from api.db.models import User
 
 from .models import (
     YouTubePlayerState, 
@@ -33,7 +35,8 @@ router = APIRouter()
 def create_video_event(
         request: Request, 
         payload: YouTubePlayerState,
-        db_session: Session = Depends(get_session)  
+        db_session: Session = Depends(get_session),
+        current_user: User = Depends(get_current_user)
     ):
     """
     Create a new YouTube watch event.
@@ -57,6 +60,7 @@ def create_video_event(
         logger.warning(f"Validation error in create_video_event: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid input: {e}")
     obj.referer = referer
+    obj.user_id = current_user.id
     if session_id:
         watch_session_query = select(WatchSession).where(WatchSession.watch_session_id==session_id)
         watch_session_obj = db_session.exec(watch_session_query).first()
@@ -77,26 +81,26 @@ def create_video_event(
 
 # List all events
 @router.get("/", response_model=List[YouTubeWatchEventResponseModel])
-def list_video_events(db_session: Session = Depends(get_session)):
+def list_video_events(db_session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     """
     List all YouTube watch events.
     - Returns: List of YouTubeWatchEventResponseModel
     """
-    events = db_session.exec(select(YouTubeWatchEvent)).all()
+    events = db_session.exec(select(YouTubeWatchEvent).where(YouTubeWatchEvent.user_id == current_user.id)).all()
     logger.info(f"Listed {len(events)} video events.")
     return events
 
 # Get a specific event
 @router.get("/{event_id}", response_model=YouTubeWatchEventResponseModel)
-def get_video_event(event_id: int, db_session: Session = Depends(get_session)):
+def get_video_event(event_id: int, db_session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     """
     Retrieve a specific YouTube watch event by its integer ID.
     - Path param: event_id (int)
     - Returns: YouTubeWatchEventResponseModel
     """
     event = db_session.get(YouTubeWatchEvent, event_id)
-    if not event:
-        logger.warning(f"YouTubeWatchEvent not found: {event_id}")
+    if not event or event.user_id != current_user.id:
+        logger.warning(f"YouTubeWatchEvent not found or forbidden: {event_id}")
         raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
     return event
 

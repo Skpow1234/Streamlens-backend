@@ -65,7 +65,12 @@ def create_video_event(
             watch_session_obj.last_active = get_utc_now()
             db_session.add(watch_session_obj)
     db_session.add(obj)
-    db_session.commit()
+    try:
+        db_session.commit()
+    except Exception as e:
+        logger.error(f"DB commit failed: {e}")
+        db_session.rollback()
+        raise HTTPException(status_code=500, detail="Database error")
     db_session.refresh(obj)
     logger.info(f"Created YouTubeWatchEvent: {obj.id}")
     return obj

@@ -7,17 +7,12 @@ services:
       - .env.compose
     ports:
       - "8002:8002"
-    command: uvicorn main:app --host 0.0.0.0 --port 8002 --reload
-    volumes:
-      - ./src:/code:rw
-    develop:
-      watch:
-        - action: rebuild
-          path: Dockerfile.web
-        - action: rebuild
-          path: requirements.txt
-        - action: rebuild
-          path: compose.yaml
+    command: uvicorn main:app --host 0.0.0.0 --port 8002
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
   db_service:
     image: timescale/timescaledb:latest-pg17
     # image: postgres:17.4
@@ -31,6 +26,11 @@ services:
     #   - 5432
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U steamlens"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 volumes:
   timescaledb_data:

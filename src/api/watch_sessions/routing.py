@@ -38,7 +38,12 @@ def create_watch_session(
         raise HTTPException(status_code=400, detail=f"Invalid input: {e}")
     obj.referer = referer
     db_session.add(obj)
-    db_session.commit()
+    try:
+        db_session.commit()
+    except Exception as e:
+        logger.error(f"DB commit failed: {e}")
+        db_session.rollback()
+        raise HTTPException(status_code=500, detail="Database error")
     db_session.refresh(obj)
     logger.info(f"Created WatchSession: {obj.watch_session_id}")
     return obj

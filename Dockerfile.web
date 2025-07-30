@@ -59,6 +59,7 @@ RUN apt-get remove --purge -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# In production, do not mount code as a volume or use --reload
 # Run the FastAPI project via the runtime script
 # when the container starts
 CMD ["/opt/run.sh"]

@@ -8,7 +8,7 @@ from sqlmodel import SQLModel, Field
 
 class YouTubeWatchEvent(TimescaleModel, table=True):
     """A time-series event representing a YouTube player's state change."""
-    id: int = Field(primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     is_ready: bool
     video_id: constr(min_length=1) = Field(index=True)
     video_title: constr(min_length=1)
@@ -17,6 +17,7 @@ class YouTubeWatchEvent(TimescaleModel, table=True):
     video_state_value: int
     referer: Optional[str] = Field(default="", index=True)
     watch_session_id: Optional[str] = Field(index=True)
+    time: datetime = Field(default_factory=datetime.utcnow, nullable=False, index=True)
 
     # timescaledb config
     __chunk_time_interval__ = "INTERVAL 7 days"

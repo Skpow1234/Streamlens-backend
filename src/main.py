@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.db.session import init_db
 from api.video_events.routing import router as video_events_router
 from api.watch_sessions.routing import router as watch_sessions_router
+from api.auth.routing import router as auth_router
 
 host_origin = ""
 host_origin_portless = ""
@@ -50,6 +51,7 @@ app.add_middleware(
 
 app.include_router(video_events_router, prefix='/api/video-events')
 app.include_router(watch_sessions_router, prefix='/api/watch-sessions')
+app.include_router(auth_router)
 
 @app.get("/")
 def read_root():

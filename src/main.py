@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.config import settings
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from api.db.session import init_db
 from api.video_events.routing import router as video_events_router
@@ -47,6 +48,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Prometheus metrics
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 app.include_router(video_events_router, prefix='/api/video-events')
 app.include_router(watch_sessions_router, prefix='/api/watch-sessions')

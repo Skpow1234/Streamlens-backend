@@ -55,6 +55,7 @@ Streamlens-back/
 - `/api/video-events/{video_id}` — Get stats for a specific video.
 - `/api/watch-sessions/` — Create a new watch session.
 - `/` — Health check and root endpoint.
+- `/metrics` — Prometheus metrics endpoint.
 
 ---
 
@@ -93,6 +94,7 @@ docker compose up --build migrate && docker compose up --build app
 
 - The API will be available at `http://localhost:8002`
 - TimescaleDB will be available at `localhost:5432`
+  - Metrics will be available at `/metrics` on the same app port
 
 1. **API Documentation:**
 
@@ -120,6 +122,11 @@ Or, if using Docker, dependencies are installed automatically when you build:
 ```sh
 docker compose up --build
 ```
+
+### Run modes
+
+- Development: `uvicorn` with autoreload (default compose)
+- Production: Use `gunicorn -k uvicorn.workers.UvicornWorker` (see `boot/docker-run.sh`). You can switch compose `command` to use gunicorn in prod.
 
 ### Usage
 

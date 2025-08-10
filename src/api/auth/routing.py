@@ -12,6 +12,7 @@ from .utils import (
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+
 @router.post("/signup")
 def signup(user: UserCreate, db: Session = Depends(get_session)):
     existing = db.exec(
@@ -29,6 +30,7 @@ def signup(user: UserCreate, db: Session = Depends(get_session)):
     token = create_access_token({"sub": db_user.id})
     return {"access_token": token, "token_type": "bearer"}
 
+
 @router.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_session)):
     db_user = db.exec(select(User).where(User.username == user.username)).first()
@@ -37,6 +39,11 @@ def login(user: UserLogin, db: Session = Depends(get_session)):
     token = create_access_token({"sub": db_user.id})
     return {"access_token": token, "token_type": "bearer"}
 
+
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
-    return {"id": current_user.id, "username": current_user.username, "email": current_user.email}
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+    }

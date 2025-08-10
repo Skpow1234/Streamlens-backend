@@ -21,7 +21,9 @@ def _require_secret_key() -> str:
     return settings.SECRET_KEY
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_session)):
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_session)
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -53,10 +55,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     to_encode = data.copy()
     now = datetime.now(timezone.utc)
     expire = now + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({
-        "exp": expire,
-        "iat": now,
-    })
+    to_encode.update({"exp": expire, "iat": now})
     if settings.JWT_ISSUER:
         to_encode["iss"] = settings.JWT_ISSUER
     if settings.JWT_AUDIENCE:

@@ -28,5 +28,5 @@ jobs:
           black --check src/ || true
       - name: Run tests
         run: |
-          PYTHONPATH=${GITHUB_WORKSPACE} pytest -q || true
+          PYTHONPATH=${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/src pytest -q || true
 

@@ -144,6 +144,21 @@ black src/
 
 You can also add these commands to your CI or pre-commit hooks for ongoing code quality.
 
+### Pre-commit
+
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+### Running tests
+
+```bash
+pip install -r requirements.txt pytest
+pytest -q
+```
+
 ---
 
 ## Database

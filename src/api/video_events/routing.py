@@ -193,15 +193,16 @@ def get_top_video_stats(
     video_id_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.video_id)
     current_time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.current_time)
     time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.time)
+    columns: tuple[Any, ...] = (
+        bucket_expr,
+        video_id_expr,
+        func.count().label("total_events"),
+        func.max(current_time_expr).label("max_viewership"),
+        func.avg(current_time_expr).label("avg_viewership"),
+        unique_views,
+    )
     query = (
-        select(
-            bucket_expr,
-            video_id_expr,
-            func.count().label("total_events"),
-            func.max(current_time_expr).label("max_viewership"),
-            func.avg(current_time_expr).label("avg_viewership"),
-            unique_views,
-        )
+        select(*columns)
         .where(
             time_expr > start,
             time_expr <= end,
@@ -258,15 +259,16 @@ def get_video_stats(
     current_time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.current_time)
     time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.time)
     unique_views_expr = func.count(func.distinct(YouTubeWatchEvent.watch_session_id)).label("unique_views")
+    columns2: tuple[Any, ...] = (
+        bucket_expr,
+        video_id_expr,
+        func.count().label("total_events"),
+        func.max(current_time_expr).label("max_viewership"),
+        func.avg(current_time_expr).label("avg_viewership"),
+        unique_views_expr,
+    )
     query = (
-        select(
-            bucket_expr,
-            video_id_expr,
-            func.count().label("total_events"),
-            func.max(current_time_expr).label("max_viewership"),
-            func.avg(current_time_expr).label("avg_viewership"),
-            unique_views_expr,
-        )
+        select(*columns2)
         .where(
             time_expr > start,
             time_expr <= end,

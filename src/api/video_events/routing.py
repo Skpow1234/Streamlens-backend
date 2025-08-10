@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Request, Depends, HTTPException
 
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select
 from pydantic import ValidationError
 
@@ -200,11 +201,8 @@ def get_top_video_stats(
     )
     try:
         results = db_session.exec(query).fetchall()
-    except:
-        raise HTTPException(
-            status_code=400,
-            detail='Invalid query'
-        )
+    except SQLAlchemyError:
+        raise HTTPException(status_code=400, detail='Invalid query')
     results = [
         VideoStat(
         time=x[0],
@@ -264,11 +262,8 @@ def get_video_stats(
     )
     try:
         results = db_session.exec(query).fetchall()
-    except:
-        raise HTTPException(
-            status_code=400,
-            detail='Invalid query'
-        )
+    except SQLAlchemyError:
+        raise HTTPException(status_code=400, detail='Invalid query')
     results = [
         VideoStat(
         time=x[0],

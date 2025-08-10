@@ -2,6 +2,7 @@ import logging
 from fastapi import APIRouter, Request, Depends, HTTPException
 from typing import List
 from sqlmodel import Session, select
+from sqlalchemy.exc import SQLAlchemyError
 from pydantic import ValidationError
 
 from api.db.session import get_session
@@ -44,7 +45,7 @@ def create_watch_session(
     db_session.add(obj)
     try:
         db_session.commit()
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"DB commit failed: {e}")
         db_session.rollback()
         raise HTTPException(status_code=500, detail="Database error")

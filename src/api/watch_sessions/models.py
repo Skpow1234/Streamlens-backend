@@ -13,10 +13,12 @@ def generate_session_id():
 class WatchSession(TimescaleModel, table=True):
     """A session representing a user's watch activity."""
     id: Optional[int] = Field(default=None, primary_key=True)
-    watch_session_id: str = Field(default_factory=generate_session_id, index=True)
+    watch_session_id: constr(min_length=1, max_length=64, pattern=r'^[\w\-]+$') = Field(
+        default_factory=generate_session_id, index=True
+    )
     path: Optional[constr(min_length=1, max_length=255, pattern=r'^[\w\-/]+$')] = Field(default="", index=True)
     referer: Optional[constr(max_length=255)] = Field(default="", index=True)
-    video_id: Optional[str] = Field(default="", index=True)
+    video_id: Optional[constr(min_length=1, max_length=32)] = Field(default="", index=True)
     last_active: Optional[datetime] = Field(default_factory=get_utc_now)
     user_id: int = Field(foreign_key="user.id")
 
@@ -27,4 +29,4 @@ class WatchSession(TimescaleModel, table=True):
 class WatchSessionCreate(SQLModel, table=False):
     """Schema for creating a new watch session. Requires a non-empty video_id and a valid path."""
     path: Optional[constr(min_length=1, max_length=255, pattern=r'^[\w\-/]+$')] = Field(default="")
-    video_id: constr(min_length=1) = Field(..., description="YouTube video ID must not be empty.")
+    video_id: constr(min_length=1, max_length=32) = Field(..., description="YouTube video ID must not be empty.")

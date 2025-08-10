@@ -30,6 +30,12 @@ class Settings:
     )
     CORS_ORIGINS: List[str] = _split_env_list(_cors_origins_env)
 
+    # Database
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+
+    # Logging
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+
 
 settings = Settings()
 

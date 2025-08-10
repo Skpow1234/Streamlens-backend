@@ -28,7 +28,6 @@ from .models import (
 
 # Set up logging
 logger = logging.getLogger("video_events")
-logging.basicConfig(level=logging.INFO)
 
 router = APIRouter()
 

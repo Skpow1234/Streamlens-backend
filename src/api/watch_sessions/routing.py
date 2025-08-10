@@ -12,7 +12,6 @@ from api.db.models import User
 
 # Set up logging
 logger = logging.getLogger("watch_sessions")
-logging.basicConfig(level=logging.INFO)
 
 router = APIRouter()
 

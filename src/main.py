@@ -1,4 +1,5 @@
 import os
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +9,15 @@ from api.db.session import init_db
 from api.video_events.routing import router as video_events_router
 from api.watch_sessions.routing import router as watch_sessions_router
 from api.auth.routing import router as auth_router
+
+# Logging
+_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+logging.basicConfig(
+    level=_level,
+    format='%(asctime)s %(levelname)s %(name)s %(message)s',
+)
+for _logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    logging.getLogger(_logger_name).setLevel(_level)
 
 # CORS
 # Use env-driven origins with safe local defaults from settings

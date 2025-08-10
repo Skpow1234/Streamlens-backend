@@ -65,7 +65,7 @@ def create_video_event(
         watch_session_query = select(WatchSession).where(WatchSession.watch_session_id==session_id)
         watch_session_obj = db_session.exec(watch_session_query).first()
         if watch_session_obj:
-            obj.watch_session_id = session_id
+            obj.watch_session_id = session_id  # type: ignore[assignment]
             watch_session_obj.last_active = get_utc_now()
             db_session.add(watch_session_obj)
     db_session.add(obj)
@@ -188,12 +188,12 @@ def get_top_video_stats(
     unique_views = func.count(func.distinct(YouTubeWatchEvent.watch_session_id)).label("unique_views")
     query = (
         select(
-            bucket, # 0
-            YouTubeWatchEvent.video_id, # 1
-            func.count().label("total_events"), # 2
-            func.max(YouTubeWatchEvent.current_time).label("max_viewership"), # in seconds
-            func.avg(YouTubeWatchEvent.current_time).label("avg_viewership"), # in seconds
-            unique_views
+            bucket,
+            YouTubeWatchEvent.video_id,
+            func.count().label("total_events"),
+            func.max(YouTubeWatchEvent.current_time).label("max_viewership"),
+            func.avg(YouTubeWatchEvent.current_time).label("avg_viewership"),
+            unique_views,
         )
         .where(
             YouTubeWatchEvent.time > start,
@@ -249,12 +249,12 @@ def get_video_stats(
     end = datetime.now(timezone.utc) - timedelta(hours=hours_until)
     query = (
         select(
-            bucket, # 0
-            YouTubeWatchEvent.video_id, # 1
-            func.count().label("total_events"), # 2
-            func.max(YouTubeWatchEvent.current_time).label("max_viewership"), # in seconds
-            func.avg(YouTubeWatchEvent.current_time).label("avg_viewership"), # in seconds
-            func.count(func.distinct(YouTubeWatchEvent.watch_session_id)).label("unique_views")
+            bucket,
+            YouTubeWatchEvent.video_id,
+            func.count().label("total_events"),
+            func.max(YouTubeWatchEvent.current_time).label("max_viewership"),
+            func.avg(YouTubeWatchEvent.current_time).label("avg_viewership"),
+            func.count(func.distinct(YouTubeWatchEvent.watch_session_id)).label("unique_views"),
         )
         .where(
             YouTubeWatchEvent.time > start,

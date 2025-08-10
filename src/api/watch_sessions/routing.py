@@ -40,7 +40,7 @@ def create_watch_session(
         logger.warning(f"Validation error in create_watch_session: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid input: {e}")
     obj.referer = referer
-    obj.user_id = current_user.id
+    obj.user_id = current_user.id  # type: ignore[assignment]
     db_session.add(obj)
     try:
         db_session.commit()

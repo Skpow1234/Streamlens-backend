@@ -1,24 +1,21 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import constr, conint, confloat
 
 from timescaledb import TimescaleModel
 from pydantic import BaseModel, Field as PydanticField
 from sqlmodel import SQLModel, Field
 
-class YouTubeWatchEvent(TimescaleModel, table=True):
+class YouTubeWatchEvent(TimescaleModel, table=True):  # type: ignore[call-arg]
     """A time-series event representing a YouTube player's state change."""
     id: Optional[int] = Field(default=None, primary_key=True)
     is_ready: bool
-    video_id: constr(min_length=1, max_length=32) = Field(index=True)
-    video_title: constr(min_length=1, max_length=255)
-    current_time: confloat(ge=0)
-    video_state_label: constr(min_length=1, max_length=64)
+    video_id: str = Field(index=True, min_length=1, max_length=32)
+    video_title: str = Field(min_length=1, max_length=255)
+    current_time: float = Field(ge=0)
+    video_state_label: str = Field(min_length=1, max_length=64)
     video_state_value: int
-    referer: Optional[constr(max_length=255)] = Field(default="", index=True)
-    watch_session_id: Optional[constr(min_length=1, max_length=64, pattern=r'^[\w\-]+$')] = Field(
-        default=None, index=True
-    )
+    referer: Optional[str] = Field(default="", index=True, max_length=255)
+    watch_session_id: Optional[str] = Field(default=None, index=True, min_length=1, max_length=64)
     user_id: int = Field(foreign_key="user.id")
     time: datetime = Field(default_factory=datetime.utcnow, nullable=False, index=True)
 
@@ -34,10 +31,10 @@ class YouTubeWatchEvent(TimescaleModel, table=True):
 class YouTubePlayerState(SQLModel, table=False):
     """Schema for YouTube player state input. Used for creating/updating events."""
     is_ready: bool
-    video_id: constr(min_length=1, max_length=32) = Field(index=True)
-    video_title: constr(min_length=1, max_length=255)
-    current_time: confloat(ge=0)
-    video_state_label: constr(min_length=1, max_length=64)
+    video_id: str = Field(index=True, min_length=1, max_length=32)
+    video_title: str = Field(min_length=1, max_length=255)
+    current_time: float = Field(ge=0)
+    video_state_label: str = Field(min_length=1, max_length=64)
     video_state_value: int
 
 class YouTubeWatchEventResponseModel(SQLModel, table=False):

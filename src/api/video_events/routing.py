@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import List, Any, cast
+from typing import List, Any, cast, Tuple
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request, Depends, HTTPException
@@ -193,7 +193,7 @@ def get_top_video_stats(
     video_id_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.video_id)
     current_time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.current_time)
     time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.time)
-    columns: tuple[Any, ...] = (
+    columns: Tuple[Any, ...] = (
         bucket_expr,
         video_id_expr,
         func.count().label("total_events"),
@@ -202,7 +202,7 @@ def get_top_video_stats(
         unique_views,
     )
     query = (
-        select(*columns)
+        cast(Any, select(*columns))
         .where(
             time_expr > start,
             time_expr <= end,
@@ -259,7 +259,7 @@ def get_video_stats(
     current_time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.current_time)
     time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.time)
     unique_views_expr = func.count(func.distinct(YouTubeWatchEvent.watch_session_id)).label("unique_views")
-    columns2: tuple[Any, ...] = (
+    columns2: Tuple[Any, ...] = (
         bucket_expr,
         video_id_expr,
         func.count().label("total_events"),
@@ -268,7 +268,7 @@ def get_video_stats(
         unique_views_expr,
     )
     query = (
-        select(*columns2)
+        cast(Any, select(*columns2))
         .where(
             time_expr > start,
             time_expr <= end,

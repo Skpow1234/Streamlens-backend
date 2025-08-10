@@ -13,9 +13,18 @@ class WatchSession(TimescaleModel, table=True):  # type: ignore[call-arg]
     """A session representing a user's watch activity."""
     id: Optional[int] = Field(default=None, primary_key=True)
     watch_session_id: str = Field(
-        default_factory=generate_session_id, index=True, unique=True, min_length=1, max_length=64
+        default_factory=generate_session_id,
+        index=True,
+        unique=True,
+        min_length=1,
+        max_length=64,
     )
-    path: Optional[str] = Field(default="", index=True, min_length=1, max_length=255)
+    path: Optional[str] = Field(
+        default="",
+        index=True,
+        min_length=1,
+        max_length=255,
+    )
     referer: Optional[str] = Field(default="", index=True, max_length=255)
     video_id: Optional[str] = Field(default="", index=True, min_length=1, max_length=32)
     last_active: Optional[datetime] = Field(default_factory=get_utc_now)
@@ -28,7 +37,9 @@ class WatchSession(TimescaleModel, table=True):  # type: ignore[call-arg]
 class WatchSessionCreate(SQLModel, table=False):
     """Schema for creating a new watch session. Requires a non-empty video_id and a valid path."""
     path: Optional[str] = Field(default="", min_length=1, max_length=255)
-    video_id: str = Field(..., min_length=1, max_length=32, description="YouTube video ID must not be empty.")
+    video_id: str = Field(
+        ..., min_length=1, max_length=32, description="YouTube video ID must not be empty."
+    )
 
 
 class WatchSessionResponse(SQLModel, table=False):

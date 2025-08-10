@@ -15,7 +15,9 @@ class YouTubeWatchEvent(TimescaleModel, table=True):  # type: ignore[call-arg]
     video_state_label: str = Field(min_length=1, max_length=64)
     video_state_value: int
     referer: Optional[str] = Field(default="", index=True, max_length=255)
-    watch_session_id: Optional[str] = Field(default=None, index=True, min_length=1, max_length=64)
+    watch_session_id: Optional[str] = Field(
+        default=None, index=True, min_length=1, max_length=64
+    )
     user_id: int = Field(foreign_key="user.id")
     time: datetime = Field(default_factory=datetime.utcnow, nullable=False, index=True)
 
@@ -24,7 +26,7 @@ class YouTubeWatchEvent(TimescaleModel, table=True):  # type: ignore[call-arg]
     __drop_after__ = "INTERVAL 1 year"
     __enable_compression__ = True
     __compress_orderby__ = "time DESC"
-    __compress_segmentby__ = "video_id"  
+    __compress_segmentby__ = "video_id"
     __migrate_data__ = True
     __if_not_exists__ = True
 

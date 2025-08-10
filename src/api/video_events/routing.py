@@ -21,10 +21,10 @@ from api.auth.utils import get_current_user
 from api.db.models import User
 
 from .models import (
-    YouTubePlayerState, 
-    YouTubeWatchEvent, 
+    YouTubePlayerState,
+    YouTubeWatchEvent,
     YouTubeWatchEventResponseModel,
-    VideoStat
+    VideoStat,
 )
 
 # Set up logging
@@ -34,11 +34,11 @@ router = APIRouter()
 
 @router.post("/", response_model=YouTubeWatchEventResponseModel)
 def create_video_event(
-        request: Request, 
-        payload: YouTubePlayerState,
-        db_session: Session = Depends(get_session),
-        current_user: User = Depends(get_current_user)
-    ):
+    request: Request,
+    payload: YouTubePlayerState,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
     Create a new YouTube watch event.
     - Requires headers: referer (str, required), x-session-id (str, optional)
@@ -51,7 +51,9 @@ def create_video_event(
     if not referer or len(referer) > 255:
         logger.warning("Missing or invalid referer header in create_video_event")
         raise HTTPException(status_code=400, detail="Missing or invalid referer header.")
-    if session_id is not None and (not re.match(r'^[\w\-]+$', session_id) or len(session_id) > 64):
+    if session_id is not None and (
+        not re.match(r'^[\w\-]+$', session_id) or len(session_id) > 64
+    ):
         logger.warning("Missing or invalid x-session-id header in create_video_event")
         raise HTTPException(status_code=400, detail="Missing or invalid x-session-id header.")
     try:
@@ -65,7 +67,9 @@ def create_video_event(
         raise HTTPException(status_code=401, detail="Invalid user")
     obj.user_id = current_user.id
     if session_id:
-        watch_session_query = select(WatchSession).where(WatchSession.watch_session_id==session_id)
+        watch_session_query = select(WatchSession).where(
+            WatchSession.watch_session_id == session_id
+        )
         watch_session_obj = db_session.exec(watch_session_query).first()
         if watch_session_obj:
             obj.watch_session_id = session_id  # type: ignore[assignment]
@@ -108,7 +112,11 @@ def list_video_events(
 
 # Get a specific event
 @router.get("/{event_id}", response_model=YouTubeWatchEventResponseModel)
-def get_video_event(event_id: int, db_session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+def get_video_event(
+    event_id: int,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
     Retrieve a specific YouTube watch event by its integer ID.
     - Path param: event_id (int)
@@ -173,9 +181,9 @@ def delete_video_event(
 
 @router.get("/top", response_model=List[VideoStat])
 def get_top_video_stats(
-        request: Request,
-        db_session: Session = Depends(get_session)  
-    ):
+    request: Request,
+    db_session: Session = Depends(get_session),
+):
     """
     Get top video statistics, aggregated by time bucket and video.
     - Query params: bucket (str), hours-ago (int), hours-until (int)
@@ -224,23 +232,25 @@ def get_top_video_stats(
         raise HTTPException(status_code=400, detail='Invalid query')
     results = [
         VideoStat(
-        time=x[0],
-        video_id=x[1],
-        total_events=x[2],
-        max_viewership=x[3],
-        avg_viewership=x[4],
-        unique_views=x[5],
-    ) for x in results]
+            time=x[0],
+            video_id=x[1],
+            total_events=x[2],
+            max_viewership=x[3],
+            avg_viewership=x[4],
+            unique_views=x[5],
+        )
+        for x in results
+    ]
     return results
 
 
 
 @router.get("/{video_id}", response_model=List[VideoStat])
 def get_video_stats(
-        video_id: str,
-        request: Request,
-        db_session: Session = Depends(get_session)  
-    ):
+    video_id: str,
+    request: Request,
+    db_session: Session = Depends(get_session),
+):
     """
     Get statistics for a specific video, aggregated by time bucket.
     - Path param: video_id (str)
@@ -290,11 +300,13 @@ def get_video_stats(
         raise HTTPException(status_code=400, detail='Invalid query')
     results = [
         VideoStat(
-        time=x[0],
-        video_id=x[1],
-        total_events=x[2],
-        max_viewership=x[3],
-        avg_viewership=x[4],
-        unique_views=x[5],
-    ) for x in results]
+            time=x[0],
+            video_id=x[1],
+            total_events=x[2],
+            max_viewership=x[3],
+            avg_viewership=x[4],
+            unique_views=x[5],
+        )
+        for x in results
+    ]
     return results

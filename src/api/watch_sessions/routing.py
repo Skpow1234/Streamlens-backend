@@ -17,11 +17,11 @@ router = APIRouter()
 
 @router.post("/", response_model=WatchSessionResponse)
 def create_watch_session(
-        request: Request, 
-        payload: WatchSessionCreate,
-        db_session: Session = Depends(get_session),
-        current_user: User = Depends(get_current_user)
-    ):
+    request: Request,
+    payload: WatchSessionCreate,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
     Create a new watch session.
     - Requires header: referer (str, required)
@@ -78,7 +78,11 @@ def list_watch_sessions(
 
 # Get a specific session
 @router.get("/{watch_session_id}", response_model=WatchSessionResponse)
-def get_watch_session(watch_session_id: str, db_session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+def get_watch_session(
+    watch_session_id: str,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
     Retrieve a specific watch session by its UUID.
     - Path param: watch_session_id (str)

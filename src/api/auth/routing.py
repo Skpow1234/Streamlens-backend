@@ -3,13 +3,22 @@ from sqlmodel import Session, select
 from api.db.session import get_session
 from .models import UserCreate, UserLogin
 from api.db.models import User
-from .utils import hash_password, verify_password, create_access_token, get_current_user
+from .utils import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    get_current_user,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/signup")
 def signup(user: UserCreate, db: Session = Depends(get_session)):
-    existing = db.exec(select(User).where((User.username == user.username) | (User.email == user.email))).first()
+    existing = db.exec(
+        select(User).where(
+            (User.username == user.username) | (User.email == user.email)
+        )
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username or email already registered")
     hashed = hash_password(user.password)

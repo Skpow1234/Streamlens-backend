@@ -1,3 +1,4 @@
+import os
 import timescaledb
 from timescaledb import create_engine
 from sqlmodel import SQLModel, Session

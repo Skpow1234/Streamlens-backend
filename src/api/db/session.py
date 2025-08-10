@@ -10,8 +10,14 @@ if not DATABASE_URL:
 engine = create_engine(DATABASE_URL, timezone="UTC")
 
 def init_db():
-    SQLModel.metadata.create_all(engine)
-    timescaledb.metadata.create_all(engine)
+    """Initialize database schema in local/dev when explicitly enabled.
+
+    Prefer running Alembic migrations in non-dev environments. To enable
+    automatic table creation for local development, set DB_AUTO_CREATE=1.
+    """
+    if os.environ.get("DB_AUTO_CREATE", "0") in {"1", "true", "True"}:
+        SQLModel.metadata.create_all(engine)
+        timescaledb.metadata.create_all(engine)
 
 def get_session():
     with Session(engine) as session:

@@ -14,7 +14,7 @@ class WatchSession(TimescaleModel, table=True):
     """A session representing a user's watch activity."""
     id: Optional[int] = Field(default=None, primary_key=True)
     watch_session_id: constr(min_length=1, max_length=64, pattern=r'^[\w\-]+$') = Field(
-        default_factory=generate_session_id, index=True
+        default_factory=generate_session_id, index=True, unique=True
     )
     path: Optional[constr(min_length=1, max_length=255, pattern=r'^[\w\-/]+$')] = Field(default="", index=True)
     referer: Optional[constr(max_length=255)] = Field(default="", index=True)

@@ -1,6 +1,6 @@
-# SteamLens
+# Streamlens
 
-SteamLens is a backend service for tracking and analyzing YouTube video watch events and sessions. It is built with FastAPI, SQLModel, and TimescaleDB, and is containerized for easy deployment.
+Streamlens is a backend service for tracking and analyzing YouTube video watch events and sessions. It is built with FastAPI, SQLModel, and TimescaleDB, and is containerized for easy deployment.
 
 ---
 
@@ -85,17 +85,18 @@ Python dependencies (see `requirements.txt`):
 
 2. **Create a `.env.compose` file** with your environment variables (see `compose.yaml` for required variables).
 
-3. **Build and start the services:**
+3. **Run database migrations, build and start the services:**
 
-   ```sh
-   docker compose up --build
-   ```
+```bash
+docker compose up --build migrate && docker compose up --build app
+```
 
-   - The API will be available at `http://localhost:8002`
-   - TimescaleDB will be available at `localhost:5432`
+- The API will be available at `http://localhost:8002`
+- TimescaleDB will be available at `localhost:5432`
 
-4. **API Documentation:**
-   - Visit `http://localhost:8002/docs` for the interactive Swagger UI.
+1. **API Documentation:**
+
+- Visit `http://localhost:8002/docs` for the interactive Swagger UI.
 
 ---
 
@@ -143,6 +144,40 @@ You can also add these commands to your CI or pre-commit hooks for ongoing code 
 - Uses TimescaleDB for efficient time-series storage and analytics.
 - Models are defined in `src/api/video_events/models.py` and `src/api/watch_sessions/models.py`.
 - Database initialization and session management in `src/api/db/session.py`.
+- Migrations are managed with Alembic (`alembic/`).
+
+### Alembic: migrations cheat sheet
+
+- Create a new migration (autogenerate):
+
+```bash
+alembic revision --autogenerate -m "<message>"
+```
+
+- Apply migrations locally (requires `DATABASE_URL`):
+
+```bash
+alembic upgrade head
+```
+
+- Using Docker Compose:
+
+```bash
+# Run only the migration service
+docker compose up --build migrate
+
+# Run app after migrations (recommended)
+docker compose up --build app
+
+# Or run both with dependencies
+docker compose up --build
+```
+
+- Downgrade (rollback) last migration:
+
+```bash
+alembic downgrade -1
+```
 
 ---
 

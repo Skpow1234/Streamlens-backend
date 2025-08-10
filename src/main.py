@@ -2,27 +2,16 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from api.config import settings
 
 from api.db.session import init_db
 from api.video_events.routing import router as video_events_router
 from api.watch_sessions.routing import router as watch_sessions_router
 from api.auth.routing import router as auth_router
 
-host_origin = ""
-host_origin_portless = ""
-
-HOST = os.environ.get("HOST")
-HOST_SCHEME = os.environ.get("HOST_SCHEME")
-HOST_PORT = os.environ.get("HOST_PORT")
-
-if all([HOST, HOST_SCHEME, HOST_PORT]):
-    host_origin = f"{HOST_SCHEME}://{HOST}:{HOST_PORT}"
-    host_origin_portless = f"{HOST_SCHEME}://{HOST}"
-
-origins = [
-    host_origin,
-    host_origin_portless
-]
+# CORS
+# Use env-driven origins with safe local defaults from settings
+origins = [origin for origin in settings.CORS_ORIGINS if origin]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,9 +19,9 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(
-    title="SteamLens API",
+    title="Streamlens API",
     description=(
-        "SteamLens is a backend service for tracking and analyzing YouTube video watch events and sessions. "
+        "Streamlens is a backend service for tracking and analyzing YouTube video watch events and sessions. "
         "It is built with FastAPI, SQLModel, and TimescaleDB, and is containerized for easy deployment.\n\n"
     ),
     version="1.0.0",

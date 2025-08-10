@@ -79,14 +79,24 @@ def get_watch_session(watch_session_id: str, db_session: Session = Depends(get_s
 
 # Update a session
 @router.put("/{watch_session_id}", response_model=WatchSession)
-def update_watch_session(watch_session_id: str, payload: WatchSessionCreate, db_session: Session = Depends(get_session)):
+def update_watch_session(
+    watch_session_id: str,
+    payload: WatchSessionCreate,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
     Update an existing watch session.
     - Path param: watch_session_id (str)
     - Request body: WatchSessionCreate
     - Returns: Updated WatchSession
     """
-    session = db_session.exec(select(WatchSession).where(WatchSession.watch_session_id == watch_session_id)).first()
+    session = db_session.exec(
+        select(WatchSession).where(
+            WatchSession.watch_session_id == watch_session_id,
+            WatchSession.user_id == current_user.id,
+        )
+    ).first()
     if not session:
         logger.warning(f"WatchSession not found for update: {watch_session_id}")
         raise HTTPException(status_code=404, detail="WatchSession not found")
@@ -101,13 +111,22 @@ def update_watch_session(watch_session_id: str, payload: WatchSessionCreate, db_
 
 # Delete a session
 @router.delete("/{watch_session_id}")
-def delete_watch_session(watch_session_id: str, db_session: Session = Depends(get_session)):
+def delete_watch_session(
+    watch_session_id: str,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
     Delete a watch session by its UUID.
     - Path param: watch_session_id (str)
     - Returns: JSON with ok status and deleted_id
     """
-    session = db_session.exec(select(WatchSession).where(WatchSession.watch_session_id == watch_session_id)).first()
+    session = db_session.exec(
+        select(WatchSession).where(
+            WatchSession.watch_session_id == watch_session_id,
+            WatchSession.user_id == current_user.id,
+        )
+    ).first()
     if not session:
         logger.warning(f"WatchSession not found for deletion: {watch_session_id}")
         raise HTTPException(status_code=404, detail="WatchSession not found")

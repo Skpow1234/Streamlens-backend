@@ -106,7 +106,12 @@ def get_video_event(event_id: int, db_session: Session = Depends(get_session), c
 
 # Update a specific event
 @router.put("/{event_id}", response_model=YouTubeWatchEventResponseModel)
-def update_video_event(event_id: int, payload: YouTubePlayerState, db_session: Session = Depends(get_session)):
+def update_video_event(
+    event_id: int,
+    payload: YouTubePlayerState,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
     Update an existing YouTube watch event.
     - Path param: event_id (int)
@@ -114,7 +119,7 @@ def update_video_event(event_id: int, payload: YouTubePlayerState, db_session: S
     - Returns: Updated YouTubeWatchEventResponseModel
     """
     event = db_session.get(YouTubeWatchEvent, event_id)
-    if not event:
+    if not event or event.user_id != current_user.id:
         logger.warning(f"YouTubeWatchEvent not found for update: {event_id}")
         raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
     update_data = payload.model_dump(exclude_unset=True)
@@ -128,14 +133,18 @@ def update_video_event(event_id: int, payload: YouTubePlayerState, db_session: S
 
 # Delete a specific event
 @router.delete("/{event_id}")
-def delete_video_event(event_id: int, db_session: Session = Depends(get_session)):
+def delete_video_event(
+    event_id: int,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
     Delete a YouTube watch event by its integer ID.
     - Path param: event_id (int)
     - Returns: JSON with ok status and deleted_id
     """
     event = db_session.get(YouTubeWatchEvent, event_id)
-    if not event:
+    if not event or event.user_id != current_user.id:
         logger.warning(f"YouTubeWatchEvent not found for deletion: {event_id}")
         raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
     db_session.delete(event)

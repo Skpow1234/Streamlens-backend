@@ -1,12 +1,13 @@
 import logging
 import re
-from typing import List
+from typing import List, Any, cast
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request, Depends, HTTPException
 
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, select
 from pydantic import ValidationError
 
@@ -60,6 +61,8 @@ def create_video_event(
         logger.warning(f"Validation error in create_video_event: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid input: {e}")
     obj.referer = referer
+    if current_user.id is None:
+        raise HTTPException(status_code=401, detail="Invalid user")
     obj.user_id = current_user.id
     if session_id:
         watch_session_query = select(WatchSession).where(WatchSession.watch_session_id==session_id)
@@ -186,30 +189,33 @@ def get_top_video_stats(
     start = datetime.now(timezone.utc) - timedelta(hours=hours_ago)
     end = datetime.now(timezone.utc) - timedelta(hours=hours_until)
     unique_views = func.count(func.distinct(YouTubeWatchEvent.watch_session_id)).label("unique_views")
+    bucket_expr: ColumnElement[Any] = cast(ColumnElement[Any], bucket)
+    video_id_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.video_id)
+    current_time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.current_time)
+    time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.time)
     query = (
         select(
-            bucket,
-            YouTubeWatchEvent.video_id,
+            bucket_expr,
+            video_id_expr,
             func.count().label("total_events"),
-            func.max(YouTubeWatchEvent.current_time).label("max_viewership"),
-            func.avg(YouTubeWatchEvent.current_time).label("avg_viewership"),
+            func.max(current_time_expr).label("max_viewership"),
+            func.avg(current_time_expr).label("avg_viewership"),
             unique_views,
         )
         .where(
-            YouTubeWatchEvent.time > start,
-            YouTubeWatchEvent.time <= end,
+            time_expr > start,
+            time_expr <= end,
             YouTubeWatchEvent.video_state_label != "CUED",
         )
         .group_by(
-            bucket,
-            YouTubeWatchEvent.video_id
+            bucket_expr,
+            video_id_expr,
         )
         .order_by(
-            bucket.desc(),
+            bucket_expr.desc(),
             unique_views.desc(),
-            YouTubeWatchEvent.video_id
+            video_id_expr,
         )
-
     )
     try:
         results = db_session.exec(query).fetchall()
@@ -247,30 +253,34 @@ def get_video_stats(
     hours_until = parse_int_or_fallback(params.get("hours-until"), fallback=0)
     start = datetime.now(timezone.utc) - timedelta(hours=hours_ago)
     end = datetime.now(timezone.utc) - timedelta(hours=hours_until)
+    bucket_expr: ColumnElement[Any] = cast(ColumnElement[Any], bucket)
+    video_id_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.video_id)
+    current_time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.current_time)
+    time_expr: ColumnElement[Any] = cast(ColumnElement[Any], YouTubeWatchEvent.time)
+    unique_views_expr = func.count(func.distinct(YouTubeWatchEvent.watch_session_id)).label("unique_views")
     query = (
         select(
-            bucket,
-            YouTubeWatchEvent.video_id,
+            bucket_expr,
+            video_id_expr,
             func.count().label("total_events"),
-            func.max(YouTubeWatchEvent.current_time).label("max_viewership"),
-            func.avg(YouTubeWatchEvent.current_time).label("avg_viewership"),
-            func.count(func.distinct(YouTubeWatchEvent.watch_session_id)).label("unique_views"),
+            func.max(current_time_expr).label("max_viewership"),
+            func.avg(current_time_expr).label("avg_viewership"),
+            unique_views_expr,
         )
         .where(
-            YouTubeWatchEvent.time > start,
-            YouTubeWatchEvent.time <= end,
+            time_expr > start,
+            time_expr <= end,
             YouTubeWatchEvent.video_state_label != "CUED",
-            YouTubeWatchEvent.video_id == video_id
+            video_id_expr == video_id,
         )
         .group_by(
-            bucket,
-            YouTubeWatchEvent.video_id
+            bucket_expr,
+            video_id_expr,
         )
         .order_by(
-            bucket.desc(),
-            YouTubeWatchEvent.video_id
+            bucket_expr.desc(),
+            video_id_expr,
         )
-
     )
     try:
         results = db_session.exec(query).fetchall()

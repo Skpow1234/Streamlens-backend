@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from pydantic import ValidationError
 
 from api.db.session import get_session
-from .models import WatchSession, WatchSessionCreate
+from .models import WatchSession, WatchSessionCreate, WatchSessionResponse
 from api.auth.utils import get_current_user
 from api.db.models import User
 
@@ -15,7 +15,7 @@ logger = logging.getLogger("watch_sessions")
 
 router = APIRouter()
 
-@router.post("/", response_model=WatchSession)
+@router.post("/", response_model=WatchSessionResponse)
 def create_watch_session(
         request: Request, 
         payload: WatchSessionCreate,
@@ -53,18 +53,31 @@ def create_watch_session(
     return obj
 
 # List all sessions
-@router.get("/", response_model=List[WatchSession])
-def list_watch_sessions(db_session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+@router.get("/", response_model=List[WatchSessionResponse])
+def list_watch_sessions(
+    limit: int = 100,
+    offset: int = 0,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
     List all watch sessions.
     - Returns: List of WatchSession
     """
-    sessions = db_session.exec(select(WatchSession).where(WatchSession.user_id == current_user.id)).all()
+    limit = max(1, min(1000, limit))
+    offset = max(0, offset)
+    query = (
+        select(WatchSession)
+        .where(WatchSession.user_id == current_user.id)
+        .offset(offset)
+        .limit(limit)
+    )
+    sessions = db_session.exec(query).all()
     logger.info(f"Listed {len(sessions)} watch sessions.")
     return sessions
 
 # Get a specific session
-@router.get("/{watch_session_id}", response_model=WatchSession)
+@router.get("/{watch_session_id}", response_model=WatchSessionResponse)
 def get_watch_session(watch_session_id: str, db_session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     """
     Retrieve a specific watch session by its UUID.
@@ -78,7 +91,7 @@ def get_watch_session(watch_session_id: str, db_session: Session = Depends(get_s
     return session
 
 # Update a session
-@router.put("/{watch_session_id}", response_model=WatchSession)
+@router.put("/{watch_session_id}", response_model=WatchSessionResponse)
 def update_watch_session(
     watch_session_id: str,
     payload: WatchSessionCreate,

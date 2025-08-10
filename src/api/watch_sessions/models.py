@@ -30,3 +30,13 @@ class WatchSessionCreate(SQLModel, table=False):
     """Schema for creating a new watch session. Requires a non-empty video_id and a valid path."""
     path: Optional[constr(min_length=1, max_length=255, pattern=r'^[\w\-/]+$')] = Field(default="")
     video_id: constr(min_length=1, max_length=32) = Field(..., description="YouTube video ID must not be empty.")
+
+
+class WatchSessionResponse(SQLModel, table=False):
+    """Response schema for watch sessions to avoid leaking internal fields."""
+    id: Optional[int]
+    watch_session_id: str
+    path: Optional[str] = ""
+    referer: Optional[str] = ""
+    video_id: Optional[str] = ""
+    last_active: Optional[datetime]

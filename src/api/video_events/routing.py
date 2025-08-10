@@ -81,12 +81,25 @@ def create_video_event(
 
 # List all events
 @router.get("/", response_model=List[YouTubeWatchEventResponseModel])
-def list_video_events(db_session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+def list_video_events(
+    limit: int = 100,
+    offset: int = 0,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     """
     List all YouTube watch events.
     - Returns: List of YouTubeWatchEventResponseModel
     """
-    events = db_session.exec(select(YouTubeWatchEvent).where(YouTubeWatchEvent.user_id == current_user.id)).all()
+    limit = max(1, min(1000, limit))
+    offset = max(0, offset)
+    query = (
+        select(YouTubeWatchEvent)
+        .where(YouTubeWatchEvent.user_id == current_user.id)
+        .offset(offset)
+        .limit(limit)
+    )
+    events = db_session.exec(query).all()
     logger.info(f"Listed {len(events)} video events.")
     return events
 

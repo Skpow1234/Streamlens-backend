@@ -285,3 +285,13 @@ def get_video_stats(
         for x in results
     ]
     return results
+
+
+@router.get("/stats/{video_id}", response_model=List[VideoStat])
+def get_video_stats_alias(
+    video_id: str,
+    request: Request,
+    db_session: Session = Depends(get_session),
+):
+    """Public alias for per-video stats to avoid confusion with protected ID routes."""
+    return get_video_stats(video_id, request, db_session)

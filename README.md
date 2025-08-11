@@ -53,6 +53,7 @@ Streamlens-back/
 - `/api/video-events/` — Create and query YouTube video events.
 - `/api/video-events/top` — Get top video stats (aggregated).
 - `/api/video-events/{video_id}` — Get stats for a specific video.
+- `/api/video-events/stats/{video_id}` — Public alias for stats by video.
 - `/api/watch-sessions/` — Create a new watch session.
 - `/` — Health check and root endpoint.
 - `/metrics` — Prometheus metrics endpoint.
@@ -94,6 +95,7 @@ docker compose up --build migrate && docker compose up --build app
 
 - The API will be available at `http://localhost:8002`
 - TimescaleDB will be available at `localhost:5432`
+  - Root `/` redirects to `LOGIN_URL` (default `http://localhost:3000/signin`).
   - Metrics will be available at `/metrics` on the same app port
 
 1. **API Documentation:**

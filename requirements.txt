@@ -6,7 +6,7 @@ pydantic==2.8.2
 sqlalchemy==2.0.30
 timescaledb
 requests==2.32.3
-psycopg[binary]==3.1.18  # psycopg v3
+psycopg[binary]==3.2.9  # psycopg v3
 # psycopg2-binary
 flake8==7.1.1
 black==24.8.0

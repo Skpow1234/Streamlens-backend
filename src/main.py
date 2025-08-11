@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.config import settings
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -57,7 +58,7 @@ app.include_router(auth_router)
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World my old friend"}
+    return RedirectResponse(url=settings.LOGIN_URL, status_code=302)
 
 @app.get("/healthChecker")
 def read_api_health():

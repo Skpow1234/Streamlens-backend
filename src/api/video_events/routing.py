@@ -86,99 +86,6 @@ def create_video_event(
     logger.info(f"Created YouTubeWatchEvent: {obj.id}")
     return obj
 
-# List all events
-@router.get("/", response_model=List[YouTubeWatchEventResponseModel])
-def list_video_events(
-    limit: int = 100,
-    offset: int = 0,
-    db_session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    List all YouTube watch events.
-    - Returns: List of YouTubeWatchEventResponseModel
-    """
-    limit = max(1, min(1000, limit))
-    offset = max(0, offset)
-    query = (
-        select(YouTubeWatchEvent)
-        .where(YouTubeWatchEvent.user_id == current_user.id)
-        .offset(offset)
-        .limit(limit)
-    )
-    events = db_session.exec(query).all()
-    logger.info(f"Listed {len(events)} video events.")
-    return events
-
-# Get a specific event
-@router.get("/{event_id}", response_model=YouTubeWatchEventResponseModel)
-def get_video_event(
-    event_id: int,
-    db_session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Retrieve a specific YouTube watch event by its integer ID.
-    - Path param: event_id (int)
-    - Returns: YouTubeWatchEventResponseModel
-    """
-    event = db_session.get(YouTubeWatchEvent, event_id)
-    if not event or event.user_id != current_user.id:
-        logger.warning(f"YouTubeWatchEvent not found or forbidden: {event_id}")
-        raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
-    return event
-
-# Update a specific event
-@router.put("/{event_id}", response_model=YouTubeWatchEventResponseModel)
-def update_video_event(
-    event_id: int,
-    payload: YouTubePlayerState,
-    db_session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Update an existing YouTube watch event.
-    - Path param: event_id (int)
-    - Request body: YouTubePlayerState
-    - Returns: Updated YouTubeWatchEventResponseModel
-    """
-    event = db_session.get(YouTubeWatchEvent, event_id)
-    if not event or event.user_id != current_user.id:
-        logger.warning(f"YouTubeWatchEvent not found for update: {event_id}")
-        raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
-    update_data = payload.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(event, key, value)
-    db_session.add(event)
-    db_session.commit()
-    db_session.refresh(event)
-    logger.info(f"Updated YouTubeWatchEvent: {event_id}")
-    return event
-
-# Delete a specific event
-@router.delete("/{event_id}")
-def delete_video_event(
-    event_id: int,
-    db_session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Delete a YouTube watch event by its integer ID.
-    - Path param: event_id (int)
-    - Returns: JSON with ok status and deleted_id
-    """
-    event = db_session.get(YouTubeWatchEvent, event_id)
-    if not event or event.user_id != current_user.id:
-        logger.warning(f"YouTubeWatchEvent not found for deletion: {event_id}")
-        raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
-    db_session.delete(event)
-    db_session.commit()
-    logger.info(f"Deleted YouTubeWatchEvent: {event_id}")
-    return {"ok": True, "deleted_id": event_id}
-
-
-
-
 @router.get("/top", response_model=List[VideoStat])
 def get_top_video_stats(
     request: Request,
@@ -242,6 +149,74 @@ def get_top_video_stats(
         for x in results
     ]
     return results
+
+# Update a specific event
+@router.put("/{event_id}", response_model=YouTubeWatchEventResponseModel)
+def update_video_event(
+    event_id: int,
+    payload: YouTubePlayerState,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Update an existing YouTube watch event.
+    - Path param: event_id (int)
+    - Request body: YouTubePlayerState
+    - Returns: Updated YouTubeWatchEventResponseModel
+    """
+    event = db_session.get(YouTubeWatchEvent, event_id)
+    if not event or event.user_id != current_user.id:
+        logger.warning(f"YouTubeWatchEvent not found for update: {event_id}")
+        raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
+    update_data = payload.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(event, key, value)
+    db_session.add(event)
+    db_session.commit()
+    db_session.refresh(event)
+    logger.info(f"Updated YouTubeWatchEvent: {event_id}")
+    return event
+
+# Delete a specific event
+@router.delete("/{event_id}")
+def delete_video_event(
+    event_id: int,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Delete a YouTube watch event by its integer ID.
+    - Path param: event_id (int)
+    - Returns: JSON with ok status and deleted_id
+    """
+    event = db_session.get(YouTubeWatchEvent, event_id)
+    if not event or event.user_id != current_user.id:
+        logger.warning(f"YouTubeWatchEvent not found for deletion: {event_id}")
+        raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
+    db_session.delete(event)
+    db_session.commit()
+    logger.info(f"Deleted YouTubeWatchEvent: {event_id}")
+    return {"ok": True, "deleted_id": event_id}
+
+
+
+
+@router.get("/{event_id:int}", response_model=YouTubeWatchEventResponseModel)
+def get_video_event(
+    event_id: int,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Retrieve a specific YouTube watch event by its integer ID.
+    - Path param: event_id (int)
+    - Returns: YouTubeWatchEventResponseModel
+    """
+    event = db_session.get(YouTubeWatchEvent, event_id)
+    if not event or event.user_id != current_user.id:
+        logger.warning(f"YouTubeWatchEvent not found or forbidden: {event_id}")
+        raise HTTPException(status_code=404, detail="YouTubeWatchEvent not found")
+    return event
 
 
 

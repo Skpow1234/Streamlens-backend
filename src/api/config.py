@@ -38,6 +38,9 @@ class Settings:
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
+    # Frontend login URL for redirects (when users hit the root URL)
+    LOGIN_URL: str = os.getenv("LOGIN_URL", "http://localhost:3000/signin")
+
 
 settings = Settings()
 

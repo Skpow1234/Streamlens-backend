@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request, Depends, HTTPException
 
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_, desc
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, select
@@ -233,6 +233,269 @@ def get_user_statistics(
             "total_sessions": int(session_durations[0].session_count or 0) if session_durations else 0
         }
     }
+
+
+@router.get("/search", response_model=List[dict])
+def search_video_events(
+    query: str = "",
+    video_title: str = "",
+    min_watch_time: int = 0,
+    max_watch_time: int = 0,
+    start_date: datetime = None,
+    end_date: datetime = None,
+    sort_by: str = "time",
+    sort_order: str = "desc",
+    limit: int = 50,
+    offset: int = 0,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Advanced search for video events with full-text search capabilities.
+    - Query parameters: query (general search), video_title, min_watch_time, max_watch_time, start_date, end_date, sort_by, sort_order, limit, offset
+    - Returns: List of matching video events with metadata
+    """
+    limit = max(1, min(200, limit))
+    offset = max(0, offset)
+
+    # Build base query
+    query_builder = select(
+        YouTubeWatchEvent,
+        func.count(YouTubeWatchEvent.id).label("watch_count"),
+        func.sum(YouTubeWatchEvent.current_time).label("total_watch_time"),
+        func.max(YouTubeWatchEvent.time).label("last_watched")
+    ).where(YouTubeWatchEvent.user_id == current_user.id)
+
+    # Apply filters
+    if query:
+        # Search in video_id and video_title
+        query_builder = query_builder.where(
+            or_(
+                YouTubeWatchEvent.video_id.ilike(f"%{query}%"),
+                YouTubeWatchEvent.video_title.ilike(f"%{query}%")
+            )
+        )
+
+    if video_title:
+        query_builder = query_builder.where(
+            YouTubeWatchEvent.video_title.ilike(f"%{video_title}%")
+        )
+
+    if min_watch_time > 0:
+        query_builder = query_builder.where(YouTubeWatchEvent.current_time >= min_watch_time)
+
+    if max_watch_time > 0:
+        query_builder = query_builder.where(YouTubeWatchEvent.current_time <= max_watch_time)
+
+    if start_date:
+        query_builder = query_builder.where(YouTubeWatchEvent.time >= start_date)
+
+    if end_date:
+        query_builder = query_builder.where(YouTubeWatchEvent.time <= end_date)
+
+    # Group by video to get aggregated stats
+    query_builder = query_builder.group_by(YouTubeWatchEvent.video_id)
+
+    # Apply sorting
+    if sort_by == "watch_count":
+        query_builder = query_builder.order_by(
+            desc(func.count(YouTubeWatchEvent.id)) if sort_order == "desc" else func.count(YouTubeWatchEvent.id)
+        )
+    elif sort_by == "total_watch_time":
+        query_builder = query_builder.order_by(
+            desc(func.sum(YouTubeWatchEvent.current_time)) if sort_order == "desc" else func.sum(YouTubeWatchEvent.current_time)
+        )
+    elif sort_by == "last_watched":
+        query_builder = query_builder.order_by(
+            desc(func.max(YouTubeWatchEvent.time)) if sort_order == "desc" else func.max(YouTubeWatchEvent.time)
+        )
+    else:  # default to time
+        query_builder = query_builder.order_by(
+            desc(func.max(YouTubeWatchEvent.time)) if sort_order == "desc" else func.max(YouTubeWatchEvent.time)
+        )
+
+    # Apply pagination
+    query_builder = query_builder.offset(offset).limit(limit)
+
+    results = db_session.exec(query_builder).all()
+
+    # Format results
+    search_results = []
+    for event, watch_count, total_watch_time, last_watched in results:
+        search_results.append({
+            "video_id": event.video_id,
+            "video_title": event.video_title or "Unknown Title",
+            "watch_count": watch_count,
+            "total_watch_time": int(total_watch_time or 0),
+            "last_watched": last_watched.isoformat() if last_watched else None,
+            "average_watch_time": round((total_watch_time or 0) / watch_count, 2) if watch_count > 0 else 0
+        })
+
+    logger.info(f"Search returned {len(search_results)} results for user {current_user.id}")
+    return search_results
+
+@router.get("/recommendations", response_model=List[dict])
+def get_video_recommendations(
+    limit: int = 10,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get personalized video recommendations based on watch history.
+    - Query parameters: limit (default 10)
+    - Returns: List of recommended videos with similarity scores
+    """
+    limit = max(1, min(50, limit))
+
+    # Get user's most watched videos to base recommendations on
+    user_videos_query = select(
+        YouTubeWatchEvent.video_id,
+        YouTubeWatchEvent.video_title,
+        func.count(YouTubeWatchEvent.id).label("watch_count"),
+        func.avg(YouTubeWatchEvent.current_time).label("avg_watch_time")
+    ).where(YouTubeWatchEvent.user_id == current_user.id)
+    user_videos_query = user_videos_query.group_by(
+        YouTubeWatchEvent.video_id,
+        YouTubeWatchEvent.video_title
+    ).order_by(desc("watch_count")).limit(20)
+
+    user_videos = db_session.exec(user_videos_query).all()
+
+    if not user_videos:
+        return []
+
+    # Find videos that are frequently watched together (simple co-occurrence)
+    recommendations = []
+
+    for video_id, title, watch_count, avg_watch_time in user_videos[:5]:  # Use top 5 most watched
+        # Find other videos that appear in similar sessions
+        related_query = select(
+            YouTubeWatchEvent.video_id,
+            YouTubeWatchEvent.video_title,
+            func.count(YouTubeWatchEvent.id).label("co_occurrence")
+        ).where(
+            and_(
+                YouTubeWatchEvent.user_id == current_user.id,
+                YouTubeWatchEvent.video_id != video_id,
+                YouTubeWatchEvent.time >= select(func.min(YouTubeWatchEvent.time)).where(
+                    and_(
+                        YouTubeWatchEvent.user_id == current_user.id,
+                        YouTubeWatchEvent.video_id == video_id
+                    )
+                ).scalar_subquery()
+            )
+        ).group_by(
+            YouTubeWatchEvent.video_id,
+            YouTubeWatchEvent.video_title
+        ).order_by(desc("co_occurrence")).limit(5)
+
+        related_videos = db_session.exec(related_query).all()
+
+        for rel_video_id, rel_title, co_occurrence in related_videos:
+            # Avoid duplicates
+            if not any(r["video_id"] == rel_video_id for r in recommendations):
+                recommendations.append({
+                    "video_id": rel_video_id,
+                    "video_title": rel_title or "Unknown Title",
+                    "similarity_score": min(100, co_occurrence * 20),  # Normalize to 0-100
+                    "reason": f"Watched together with {title[:30]}..."
+                })
+
+    # If we don't have enough recommendations, add trending videos
+    if len(recommendations) < limit:
+        trending_query = select(
+            YouTubeWatchEvent.video_id,
+            YouTubeWatchEvent.video_title,
+            func.count(YouTubeWatchEvent.id).label("total_views")
+        ).where(
+            and_(
+                YouTubeWatchEvent.user_id != current_user.id,  # Other users' videos
+                YouTubeWatchEvent.time >= datetime.utcnow() - timedelta(days=7),  # Last 7 days
+                ~YouTubeWatchEvent.video_id.in_([r["video_id"] for r in recommendations])  # Not already recommended
+            )
+        ).group_by(
+            YouTubeWatchEvent.video_id,
+            YouTubeWatchEvent.video_title
+        ).order_by(desc("total_views")).limit(limit - len(recommendations))
+
+        trending_videos = db_session.exec(trending_query).all()
+
+        for video_id, title, total_views in trending_videos:
+            recommendations.append({
+                "video_id": video_id,
+                "video_title": title or "Unknown Title",
+                "similarity_score": min(100, total_views),
+                "reason": "Trending this week"
+            })
+
+    logger.info(f"Generated {len(recommendations)} recommendations for user {current_user.id}")
+    return recommendations[:limit]
+
+@router.get("/trending", response_model=List[dict])
+def get_trending_videos(
+    timeframe: str = "week",  # day, week, month
+    limit: int = 20,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get trending videos based on watch activity.
+    - Query parameters: timeframe (day/week/month), limit (default 20)
+    - Returns: List of trending videos with activity metrics
+    """
+    limit = max(1, min(100, limit))
+
+    # Calculate timeframe
+    now = datetime.utcnow()
+    if timeframe == "day":
+        start_time = now - timedelta(days=1)
+    elif timeframe == "month":
+        start_time = now - timedelta(days=30)
+    else:  # week
+        start_time = now - timedelta(days=7)
+
+    # Get trending videos
+    trending_query = select(
+        YouTubeWatchEvent.video_id,
+        YouTubeWatchEvent.video_title,
+        func.count(YouTubeWatchEvent.id).label("total_views"),
+        func.count(func.distinct(YouTubeWatchEvent.user_id)).label("unique_watchers"),
+        func.avg(YouTubeWatchEvent.current_time).label("avg_watch_time"),
+        func.max(YouTubeWatchEvent.time).label("last_activity")
+    ).where(
+        and_(
+            YouTubeWatchEvent.time >= start_time,
+            YouTubeWatchEvent.user_id != current_user.id  # Exclude user's own views
+        )
+    ).group_by(
+        YouTubeWatchEvent.video_id,
+        YouTubeWatchEvent.video_title
+    ).having(
+        func.count(YouTubeWatchEvent.id) >= 3  # At least 3 views to be considered trending
+    ).order_by(desc("total_views")).limit(limit)
+
+    trending_videos = db_session.exec(trending_query).all()
+
+    results = []
+    for video_id, title, total_views, unique_watchers, avg_watch_time, last_activity in trending_videos:
+        # Calculate trending score (views * uniqueness * recency)
+        hours_since_activity = (now - last_activity).total_seconds() / 3600
+        recency_score = max(0.1, 1 - (hours_since_activity / 168))  # Decay over 7 days
+        trending_score = int((total_views * unique_watchers * recency_score) / 10)
+
+        results.append({
+            "video_id": video_id,
+            "video_title": title or "Unknown Title",
+            "total_views": total_views,
+            "unique_watchers": unique_watchers,
+            "average_watch_time": round(avg_watch_time, 2) if avg_watch_time else 0,
+            "trending_score": trending_score,
+            "last_activity": last_activity.isoformat(),
+            "timeframe": timeframe
+        })
+
+    logger.info(f"Found {len(results)} trending videos for timeframe: {timeframe}")
+    return results
 
 
 @router.post("/", response_model=YouTubeWatchEventResponseModel)

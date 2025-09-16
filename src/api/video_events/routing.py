@@ -57,6 +57,110 @@ def get_all_video_events(
     logger.info(f"Retrieved {len(events)} video events for user {current_user.id}")
     return events
 
+
+@router.get("/stats/user", response_model=dict)
+def get_user_statistics(
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get comprehensive user statistics for dashboard.
+    - Returns: User stats including total watch time, video count, session count, etc.
+    """
+    # Total videos watched (unique video IDs)
+    unique_videos = db_session.exec(
+        select(func.count(func.distinct(YouTubeWatchEvent.video_id)))
+        .where(YouTubeWatchEvent.user_id == current_user.id)
+    ).first()
+
+    # Total watch sessions
+    total_sessions = db_session.exec(
+        select(func.count(func.distinct(YouTubeWatchEvent.watch_session_id)))
+        .where(YouTubeWatchEvent.user_id == current_user.id)
+    ).first()
+
+    # Total watch time (sum of current_time for latest events per video)
+    # This is a simplified calculation - in practice you'd want more sophisticated logic
+    total_time_query = select(func.sum(YouTubeWatchEvent.current_time)).where(
+        YouTubeWatchEvent.user_id == current_user.id
+    )
+    total_time = db_session.exec(total_time_query).first() or 0
+
+    # Recent activity (last 10 events)
+    recent_activity = db_session.exec(
+        select(YouTubeWatchEvent)
+        .where(YouTubeWatchEvent.user_id == current_user.id)
+        .order_by(YouTubeWatchEvent.time.desc())
+        .limit(10)
+    ).all()
+
+    # Most watched videos
+    most_watched = db_session.exec(
+        select(
+            YouTubeWatchEvent.video_id,
+            YouTubeWatchEvent.video_title,
+            func.count().label("watch_count"),
+            func.max(YouTubeWatchEvent.current_time).label("max_time")
+        )
+        .where(YouTubeWatchEvent.user_id == current_user.id)
+        .group_by(YouTubeWatchEvent.video_id, YouTubeWatchEvent.video_title)
+        .order_by(func.count().desc())
+        .limit(5)
+    ).all()
+
+    # Watch time by day (last 30 days)
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    daily_stats = db_session.exec(
+        select(
+            func.date(YouTubeWatchEvent.time).label("date"),
+            func.count().label("events_count"),
+            func.sum(YouTubeWatchEvent.current_time).label("total_time")
+        )
+        .where(
+            YouTubeWatchEvent.user_id == current_user.id,
+            YouTubeWatchEvent.time >= thirty_days_ago
+        )
+        .group_by(func.date(YouTubeWatchEvent.time))
+        .order_by(func.date(YouTubeWatchEvent.time))
+    ).all()
+
+    return {
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "total_videos_watched": unique_videos,
+        "total_sessions": total_sessions,
+        "total_watch_time_seconds": total_time,
+        "recent_activity": [
+            {
+                "id": activity.id,
+                "video_id": activity.video_id,
+                "video_title": activity.video_title,
+                "current_time": activity.current_time,
+                "time": activity.time.isoformat(),
+                "video_state_label": activity.video_state_label
+            }
+            for activity in recent_activity
+        ],
+        "most_watched_videos": [
+            {
+                "video_id": video.video_id,
+                "video_title": video.video_title,
+                "watch_count": video.watch_count,
+                "max_time": video.max_time
+            }
+            for video in most_watched
+        ],
+        "daily_stats": [
+            {
+                "date": stat.date.isoformat(),
+                "events_count": stat.events_count,
+                "total_time": stat.total_time
+            }
+            for stat in daily_stats
+        ]
+    }
+
+
 @router.post("/", response_model=YouTubeWatchEventResponseModel)
 def create_video_event(
     request: Request,

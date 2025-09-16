@@ -124,6 +124,55 @@ def get_user_statistics(
         .order_by(func.date(YouTubeWatchEvent.time))
     ).all()
 
+    # Get hourly activity patterns (for heatmap)
+    hourly_patterns = db_session.exec(
+        select(
+            func.extract('hour', YouTubeWatchEvent.time).label("hour"),
+            func.extract('dow', YouTubeWatchEvent.time).label("day_of_week"),
+            func.count().label("activity_count")
+        )
+        .where(
+            YouTubeWatchEvent.user_id == current_user.id,
+            YouTubeWatchEvent.time >= thirty_days_ago
+        )
+        .group_by(
+            func.extract('hour', YouTubeWatchEvent.time),
+            func.extract('dow', YouTubeWatchEvent.time)
+        )
+        .order_by(
+            func.extract('dow', YouTubeWatchEvent.time),
+            func.extract('hour', YouTubeWatchEvent.time)
+        )
+    ).all()
+
+    # Get video engagement metrics (completion rates, average watch time)
+    video_engagement = db_session.exec(
+        select(
+            YouTubeWatchEvent.video_id,
+            YouTubeWatchEvent.video_title,
+            func.count().label("total_events"),
+            func.avg(YouTubeWatchEvent.current_time).label("avg_watch_time"),
+            func.max(YouTubeWatchEvent.current_time).label("max_watch_time"),
+            func.min(YouTubeWatchEvent.current_time).label("min_watch_time")
+        )
+        .where(YouTubeWatchEvent.user_id == current_user.id)
+        .group_by(YouTubeWatchEvent.video_id, YouTubeWatchEvent.video_title)
+        .having(func.count() >= 3)  # Only videos with multiple views
+        .order_by(func.count().desc())
+        .limit(10)
+    ).all()
+
+    # Get session duration analysis
+    session_durations = db_session.exec(
+        select(
+            func.avg(YouTubeWatchEvent.current_time).label("avg_session_time"),
+            func.min(YouTubeWatchEvent.current_time).label("min_session_time"),
+            func.max(YouTubeWatchEvent.current_time).label("max_session_time"),
+            func.count(func.distinct(YouTubeWatchEvent.watch_session_id)).label("session_count")
+        )
+        .where(YouTubeWatchEvent.user_id == current_user.id)
+    ).all()
+
     return {
         "user_id": current_user.id,
         "username": current_user.username,
@@ -157,7 +206,32 @@ def get_user_statistics(
                 "total_time": stat.total_time
             }
             for stat in daily_stats
-        ]
+        ],
+        "hourly_patterns": [
+            {
+                "hour": int(pattern.hour),
+                "day_of_week": int(pattern.day_of_week),
+                "activity_count": pattern.activity_count
+            }
+            for pattern in hourly_patterns
+        ],
+        "video_engagement": [
+            {
+                "video_id": video.video_id,
+                "video_title": video.video_title,
+                "total_events": video.total_events,
+                "avg_watch_time": float(video.avg_watch_time or 0),
+                "max_watch_time": float(video.max_watch_time or 0),
+                "min_watch_time": float(video.min_watch_time or 0)
+            }
+            for video in video_engagement
+        ],
+        "session_analysis": {
+            "avg_session_time": float(session_durations[0].avg_session_time or 0) if session_durations else 0,
+            "min_session_time": float(session_durations[0].min_session_time or 0) if session_durations else 0,
+            "max_session_time": float(session_durations[0].max_session_time or 0) if session_durations else 0,
+            "total_sessions": int(session_durations[0].session_count or 0) if session_durations else 0
+        }
     }
 
 

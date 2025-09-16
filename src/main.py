@@ -54,7 +54,7 @@ Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 app.include_router(video_events_router, prefix='/api/video-events')
 app.include_router(watch_sessions_router, prefix='/api/watch-sessions')
-app.include_router(auth_router)
+app.include_router(auth_router, prefix='/api/auth')
 
 @app.get("/")
 def read_root():

@@ -10,7 +10,7 @@ from .utils import (
     get_current_user,
 )
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 
 @router.post("/signup")

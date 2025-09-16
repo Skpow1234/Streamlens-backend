@@ -32,6 +32,31 @@ logger = logging.getLogger("video_events")
 
 router = APIRouter()
 
+@router.get("/", response_model=List[YouTubeWatchEventResponseModel])
+def get_all_video_events(
+    limit: int = 100,
+    offset: int = 0,
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get all video events for the current user.
+    - Query params: limit (int, default=100), offset (int, default=0)
+    - Returns: List of YouTubeWatchEventResponseModel
+    """
+    limit = max(1, min(1000, limit))
+    offset = max(0, offset)
+    query = (
+        select(YouTubeWatchEvent)
+        .where(YouTubeWatchEvent.user_id == current_user.id)
+        .order_by(YouTubeWatchEvent.time.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    events = db_session.exec(query).all()
+    logger.info(f"Retrieved {len(events)} video events for user {current_user.id}")
+    return events
+
 @router.post("/", response_model=YouTubeWatchEventResponseModel)
 def create_video_event(
     request: Request,

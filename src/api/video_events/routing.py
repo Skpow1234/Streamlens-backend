@@ -18,6 +18,7 @@ from api.utils import parse_int_or_fallback
 from api.db.session import get_session
 from api.watch_sessions.models import WatchSession
 from api.auth.utils import get_current_user
+from main import cache  # Import cache system
 from api.db.models import User
 
 from .models import (
@@ -67,6 +68,13 @@ def get_user_statistics(
     Get comprehensive user statistics for dashboard.
     - Returns: User stats including total watch time, video count, session count, etc.
     """
+    # Check cache first
+    cache_key = f"user_stats:{current_user.id}"
+    cached_stats = cache.get(cache_key)
+
+    if cached_stats:
+        logger.info(f"Cache hit for user stats: {current_user.id}")
+        return cached_stats
     # Total videos watched (unique video IDs)
     unique_videos = db_session.exec(
         select(func.count(func.distinct(YouTubeWatchEvent.video_id)))
@@ -233,6 +241,10 @@ def get_user_statistics(
             "total_sessions": int(session_durations[0].session_count or 0) if session_durations else 0
         }
     }
+
+    # Cache the results for 5 minutes
+    cache.set(cache_key, result, ttl=300)
+    logger.info(f"Cached user stats for user: {current_user.id}")
 
 
 @router.get("/search", response_model=List[dict])
@@ -496,6 +508,47 @@ def get_trending_videos(
 
     logger.info(f"Found {len(results)} trending videos for timeframe: {timeframe}")
     return results
+
+@router.delete("/bulk")
+def bulk_delete_video_events(
+    event_ids: List[int],
+    db_session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Bulk delete video events for better performance.
+    - event_ids: List of event IDs to delete
+    - Returns: Deletion summary
+    """
+    if not event_ids or len(event_ids) > 100:
+        raise HTTPException(status_code=400, detail="Must provide 1-100 event IDs")
+
+    # Verify ownership and delete
+    deleted_count = 0
+    not_found = []
+
+    for event_id in event_ids:
+        event = db_session.get(YouTubeWatchEvent, event_id)
+        if event and event.user_id == current_user.id:
+            db_session.delete(event)
+            deleted_count += 1
+        else:
+            not_found.append(event_id)
+
+    db_session.commit()
+
+    # Clear related caches
+    cache_key = f"user_stats:{current_user.id}"
+    cache.delete(cache_key)
+
+    logger.info(f"Bulk deleted {deleted_count} events for user {current_user.id}")
+
+    return {
+        "message": f"Successfully deleted {deleted_count} events",
+        "deleted_count": deleted_count,
+        "not_found": not_found,
+        "total_requested": len(event_ids)
+    }
 
 
 @router.post("/", response_model=YouTubeWatchEventResponseModel)

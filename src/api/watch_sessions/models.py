@@ -1,10 +1,12 @@
 import uuid
+import re
 from datetime import datetime
 from typing import Optional
 
 from timescaledb import TimescaleModel
 from timescaledb.utils import get_utc_now
 from sqlmodel import SQLModel, Field
+from pydantic import field_validator
 
 def generate_session_id():
     return str(uuid.uuid4())
@@ -40,6 +42,25 @@ class WatchSessionCreate(SQLModel, table=False):
     video_id: str = Field(
         ..., min_length=1, max_length=32, description="YouTube video ID must not be empty."
     )
+
+    @field_validator('video_id')
+    @classmethod
+    def validate_video_id(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Video ID cannot be empty')
+        if len(v) > 32:
+            raise ValueError('Video ID must be less than 32 characters')
+        # Basic YouTube video ID validation (11 characters, alphanumeric + hyphens + underscores)
+        if not re.match(r'^[a-zA-Z0-9_-]{11}$', v):
+            raise ValueError('Invalid YouTube video ID format')
+        return v.strip()
+
+    @field_validator('path')
+    @classmethod
+    def validate_path(cls, v):
+        if v and len(v) > 255:
+            raise ValueError('Path must be less than 255 characters')
+        return v.strip() if v else ""
 
 
 class WatchSessionResponse(SQLModel, table=False):

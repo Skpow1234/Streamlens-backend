@@ -2,8 +2,9 @@ from datetime import datetime
 from typing import Optional
 
 from timescaledb import TimescaleModel
-from pydantic import BaseModel, Field as PydanticField
+from pydantic import BaseModel, Field as PydanticField, field_validator
 from sqlmodel import SQLModel, Field
+import re
 
 class YouTubeWatchEvent(TimescaleModel, table=True):  # type: ignore[call-arg]
     """A time-series event representing a YouTube player's state change."""
@@ -38,6 +39,50 @@ class YouTubePlayerState(SQLModel, table=False):
     current_time: float = Field(ge=0)
     video_state_label: str = Field(min_length=1, max_length=64)
     video_state_value: int
+
+    @field_validator('video_id')
+    @classmethod
+    def validate_video_id(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Video ID cannot be empty')
+        if len(v) > 32:
+            raise ValueError('Video ID must be less than 32 characters')
+        # Basic YouTube video ID validation (11 characters, alphanumeric + hyphens + underscores)
+        if not re.match(r'^[a-zA-Z0-9_-]{11}$', v):
+            raise ValueError('Invalid YouTube video ID format')
+        return v.strip()
+
+    @field_validator('video_title')
+    @classmethod
+    def validate_video_title(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Video title cannot be empty')
+        if len(v) > 255:
+            raise ValueError('Video title must be less than 255 characters')
+        return v.strip()
+
+    @field_validator('current_time')
+    @classmethod
+    def validate_current_time(cls, v):
+        if v < 0:
+            raise ValueError('Current time cannot be negative')
+        return v
+
+    @field_validator('video_state_label')
+    @classmethod
+    def validate_video_state_label(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Video state label cannot be empty')
+        if len(v) > 64:
+            raise ValueError('Video state label must be less than 64 characters')
+        return v.strip()
+
+    @field_validator('video_state_value')
+    @classmethod
+    def validate_video_state_value(cls, v):
+        if v < -1 or v > 5:
+            raise ValueError('Video state value must be between -1 and 5')
+        return v
 
 class YouTubeWatchEventResponseModel(SQLModel, table=False):
     id: int = Field(primary_key=True)

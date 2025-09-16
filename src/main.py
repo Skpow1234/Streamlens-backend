@@ -13,6 +13,7 @@ from api.video_events.routing import router as video_events_router
 from api.watch_sessions.routing import router as watch_sessions_router
 from api.auth.routing import router as auth_router
 from api.social.routing import router as social_router
+from api.playlists.routing import router as playlists_router
 
 # Logging
 _level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
@@ -102,6 +103,7 @@ app.include_router(video_events_router, prefix='/api/video-events')
 app.include_router(watch_sessions_router, prefix='/api/watch-sessions')
 app.include_router(auth_router, prefix='/api/auth')
 app.include_router(social_router, prefix='/api/social')
+app.include_router(playlists_router, prefix='/api/playlists')
 
 @app.get("/")
 def read_root():

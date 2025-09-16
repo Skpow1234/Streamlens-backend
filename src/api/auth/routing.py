@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
 from api.db.session import get_session
@@ -15,15 +16,34 @@ router = APIRouter(tags=["auth"])
 
 @router.post("/signup")
 def signup(user: UserCreate, db: Session = Depends(get_session)):
+    # Input validation
+    if not user.username or len(user.username.strip()) < 3 or len(user.username) > 50:
+        raise HTTPException(status_code=400, detail="Username must be 3-50 characters long")
+
+    if not user.email or not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', user.email):
+        raise HTTPException(status_code=400, detail="Invalid email format")
+
+    if not user.password or len(user.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
+
+    # Check for password complexity
+    if not re.search(r'[A-Z]', user.password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter")
+    if not re.search(r'[a-z]', user.password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one lowercase letter")
+    if not re.search(r'\d', user.password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one number")
+
     existing = db.exec(
         select(User).where(
-            (User.username == user.username) | (User.email == user.email)
+            (User.username == user.username.strip().lower()) | (User.email == user.email.strip().lower())
         )
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username or email already registered")
+
     hashed = hash_password(user.password)
-    db_user = User(username=user.username, email=user.email, hashed_password=hashed)
+    db_user = User(username=user.username.strip(), email=user.email.strip().lower(), hashed_password=hashed)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -33,7 +53,14 @@ def signup(user: UserCreate, db: Session = Depends(get_session)):
 
 @router.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_session)):
-    db_user = db.exec(select(User).where(User.username == user.username)).first()
+    # Input validation
+    if not user.username or len(user.username.strip()) < 3 or len(user.username) > 50:
+        raise HTTPException(status_code=400, detail="Invalid username format")
+
+    if not user.password or len(user.password) < 8:
+        raise HTTPException(status_code=400, detail="Invalid password format")
+
+    db_user = db.exec(select(User).where(User.username == user.username.strip())).first()
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": db_user.id})

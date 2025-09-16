@@ -1,4 +1,5 @@
 import logging
+import re
 from fastapi import APIRouter, Request, Depends, HTTPException
 from typing import List
 from sqlmodel import Session, select
@@ -28,11 +29,23 @@ def create_watch_session(
     - Request body: WatchSessionCreate
     - Returns: The created WatchSession
     """
+    # Input validation
+    if not payload.video_id or len(payload.video_id) < 1 or len(payload.video_id) > 32:
+        raise HTTPException(status_code=400, detail="Invalid video_id: must be 1-32 characters")
+
+    if payload.path and len(payload.path) > 255:
+        raise HTTPException(status_code=400, detail="Invalid path: must be less than 255 characters")
+
     headers = request.headers
     referer = headers.get("referer")
     if not referer or len(referer) > 255:
         logger.warning("Missing or invalid referer header in create_watch_session")
         raise HTTPException(status_code=400, detail="Missing or invalid referer header.")
+
+    # Validate video_id format (basic YouTube ID validation)
+    if not re.match(r'^[a-zA-Z0-9_-]{11}$', payload.video_id):
+        raise HTTPException(status_code=400, detail="Invalid YouTube video ID format")
+
     try:
         data = payload.model_dump()
         obj = WatchSession(**data)

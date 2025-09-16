@@ -81,6 +81,22 @@ def create_video_event(
     ):
         logger.warning("Missing or invalid x-session-id header in create_video_event")
         raise HTTPException(status_code=400, detail="Missing or invalid x-session-id header.")
+    # Input validation
+    if not payload.video_id or len(payload.video_id) < 1 or len(payload.video_id) > 32:
+        raise HTTPException(status_code=400, detail="Invalid video_id: must be 1-32 characters")
+
+    if not payload.video_title or len(payload.video_title) < 1 or len(payload.video_title) > 255:
+        raise HTTPException(status_code=400, detail="Invalid video_title: must be 1-255 characters")
+
+    if payload.current_time < 0:
+        raise HTTPException(status_code=400, detail="Invalid current_time: must be non-negative")
+
+    if not payload.video_state_label or len(payload.video_state_label) < 1 or len(payload.video_state_label) > 64:
+        raise HTTPException(status_code=400, detail="Invalid video_state_label: must be 1-64 characters")
+
+    if payload.video_state_value < -1 or payload.video_state_value > 5:
+        raise HTTPException(status_code=400, detail="Invalid video_state_value: must be between -1 and 5")
+
     try:
         data = payload.model_dump()
         obj = YouTubeWatchEvent(**data)
